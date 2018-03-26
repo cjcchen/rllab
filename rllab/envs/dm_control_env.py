@@ -1,5 +1,4 @@
 import pygame
-from PIL import Image
 import numpy as np
 
 from dm_control import suite
@@ -10,6 +9,7 @@ from rllab.envs.base import Env, Step
 from rllab.core.serializable import Serializable
 from rllab.spaces.box import Box
 from rllab.spaces.discrete import Discrete
+from rllab.envs.dm_control_view import DmControlViewer
 '''
 This environment will use dm_control toolkit(https://arxiv.org/pdf/1801.00690.pdf) 
 to train and simulate your models.
@@ -46,7 +46,7 @@ walker/walk
 
 
 def _flat_shape(observation):
-    return np.sum( np.prod(v.shape) for k,v in observation.items())
+    return np.sum( int(np.prod(v.shape)) for k,v in observation.items())
 
 
 def _flat_observation(observation):
@@ -66,14 +66,13 @@ class DmControlEnv(Env, Serializable):
         #create dm control env
         self._env = suite.load(domain_name=domain_name, task_name=task_name)
 
-        self._plot = plot
         self._total_reward = 0
         self._render_kwargs={ 'width': width, 'height': height }
 
-        if self._plot:
-            #create pygame window
-            pygame.init()
-            self._plot_window = pygame.display.set_mode((width, height))
+        if plot:
+            self._dm_control_viewer = DmControlViewer()
+        else:
+            self._dm_control_viewer = None
 
 
     def step(self, action):
@@ -91,25 +90,13 @@ class DmControlEnv(Env, Serializable):
         return _flat_observation(time_step.observation)
 
     def render(self):
-        if self._plot == True:
+        if self._dm_control_viewer:
             pixels_img = self._env.physics.render(**self._render_kwargs)
-            self._set_image(pixels_img)
-            pygame.display.update()
-
-    def _set_image(self, pixels_img):
-        image = Image.fromarray(pixels_img)
-        mode = image.mode
-        size = image.size
-        pygame_image = pygame.image.frombuffer(image.tobytes(), size, mode)
-        self._plot_window.blit(pygame_image, (0, 0))
-        pygame.display.update()
+            self._dm_control_viewer.loop_once(pixels_img)
 
     def terminate(self):
-        pygame.quit()
-
-    @property
-    def plot(self):
-        return self._plot
+        if self._dm_control_viewer:
+            self._dm_control_viewer.finish()
 
     @property
     def action_space(self):
@@ -124,3 +111,4 @@ class DmControlEnv(Env, Serializable):
     @property
     def total_reward(self):
         return self._total_reward
+

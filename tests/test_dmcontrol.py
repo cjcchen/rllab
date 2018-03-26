@@ -33,7 +33,7 @@ def run_task(domain_name, task_name):
 
     time_step = dmcontrol_env.reset()
     action_spec = dmcontrol_env.action_space
-    for i in range(10):
+    for i in range(100):
         dmcontrol_env.render()
         action = action_spec.sample()
         next_obs, reward, done, info = dmcontrol_env.step(action)
@@ -45,6 +45,5 @@ def run_task(domain_name, task_name):
 
 for domain, task in model_list:
     run_task(domain, task)
-    break
 
 print("Congratulation! All tasks are done!")
