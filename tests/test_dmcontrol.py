@@ -3,20 +3,30 @@ import numpy as np
 from rllab.envs.dm_control_env import DmControlEnv
 from rllab.envs.normalized_env import normalize
 
-model_list = [('ball_in_cup', 'catch'), ("cartpole",
-                                         "swingup_sparse"), ("cartpole",
-                                                             "balance_sparse"),
-              ("cartpole", "swingup"), ("cartpole", "balance"), ("cheetah",
-                                                                 "run"),
-              ("finger", "spin"), ("hopper", "stand"), ("hopper", "hop"),
-              ("humanoid", "stand"), ("humanoid", "run"), ("humanoid", "walk"),
-              ("manipulator",
-               "bring_ball"), ("pendulum", "swingup"), ("point_mass", "easy"),
-              ("reacher", "hard"), ("reacher", "easy"), ("swimmer",
-                                                         "swimmer6"),
-              ("swimmer",
-               "swimmer15"), ("walker", "stand"), ("walker", "run"), ("walker",
-                                                                      "walk")]
+model_list = [
+('ball_in_cup', 'catch'), 
+("cartpole", "swingup_sparse"), 
+("cartpole", "balance_sparse"), 
+("cartpole", "swingup"), 
+("cartpole", "balance"), 
+("cheetah", "run"), 
+("finger", "spin"), 
+("hopper", "stand"), 
+("hopper", "hop"), 
+("humanoid", "stand"), 
+("humanoid", "run"), 
+("humanoid", "walk"), 
+("manipulator", "bring_ball"), 
+("pendulum", "swingup"), 
+("point_mass", "easy"), 
+("reacher", "hard"), 
+("reacher", "easy"), 
+("swimmer", "swimmer6"),
+("swimmer", "swimmer15"), 
+("walker", "stand"), 
+("walker", "run"),
+("walker", "walk")
+]
 
 
 def run_task(domain_name, task_name):
