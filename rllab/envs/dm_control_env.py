@@ -6,10 +6,10 @@ from dm_control.rl.environment import StepType
 from dm_control.suite.wrappers import pixels
 
 from rllab.envs.base import Env, Step
+from rllab.envs.dm_control_view import DmControlViewer
 from rllab.core.serializable import Serializable
 from rllab.spaces.box import Box
 from rllab.spaces.discrete import Discrete
-from rllab.envs.dm_control_view import DmControlViewer
 '''
 This environment will use dm_control toolkit(https://arxiv.org/pdf/1801.00690.pdf) 
 to train and simulate your models.
