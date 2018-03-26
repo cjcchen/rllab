@@ -63,7 +63,6 @@ class DmControlEnv(Env, Serializable):
                  ):
         Serializable.quick_init(self, locals())
 
-        #create dm control env
         self._env = suite.load(domain_name=domain_name, task_name=task_name)
 
         self._total_reward = 0
