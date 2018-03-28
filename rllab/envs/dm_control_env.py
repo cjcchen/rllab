@@ -3,45 +3,14 @@ import numpy as np
 
 from dm_control import suite
 from dm_control.rl.environment import StepType
-from dm_control.suite.wrappers import pixels
 
 from rllab.envs.base import Env, Step
 from rllab.envs.dm_control_view import DmControlViewer
 from rllab.core.serializable import Serializable
 from rllab.spaces.box import Box
-from rllab.spaces.discrete import Discrete
 '''
 This environment will use dm_control toolkit(https://arxiv.org/pdf/1801.00690.pdf) 
 to train and simulate your models.
-
-Domain name and task name used for dm_control are showed below: (domain name/task name)
-
-ball_in_cup/catch
-cartpole/swingup_sparse
-cartpole/balance_sparse
-cartpole/swingup
-cartpole/balance
-cheetah/run
-finger/turn_hard
-finger/spin
-finger/turn_easy
-fish/upright
-fish/swim
-hopper/stand
-hopper/hop
-humanoid/stand
-humanoid/run
-humanoid/walk
-manipulator/bring_ball
-pendulum/swingup
-point_mass/easy
-reacher/hard
-reacher/easy
-swimmer/swimmer6
-swimmer/swimmer15
-walker/stand
-walker/run
-walker/walk
 '''
 
 
@@ -69,9 +38,9 @@ class DmControlEnv(Env, Serializable):
         self._render_kwargs={ 'width': width, 'height': height }
 
         if plot:
-            self._dm_control_viewer = DmControlViewer()
+            self._viewer = DmControlViewer()
         else:
-            self._dm_control_viewer = None
+            self._viewer = None
 
 
     def step(self, action):
@@ -89,13 +58,13 @@ class DmControlEnv(Env, Serializable):
         return _flat_observation(time_step.observation)
 
     def render(self):
-        if self._dm_control_viewer:
+        if self._viewer:
             pixels_img = self._env.physics.render(**self._render_kwargs)
-            self._dm_control_viewer.loop_once(pixels_img)
+            self._viewer.loop_once(pixels_img)
 
     def terminate(self):
-        if self._dm_control_viewer:
-            self._dm_control_viewer.finish()
+        if self._viewer:
+            self._viewer.finish()
 
     @property
     def action_space(self):
