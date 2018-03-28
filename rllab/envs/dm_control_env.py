@@ -49,7 +49,7 @@ class DmControlEnv(Env, Serializable):
             self._total_reward += time_step.reward
 
         return Step(_flat_observation(time_step.observation), time_step.reward, \
-                True if time_step.step_type == StepType.LAST else False, \
+                True if (time_step.step_type == StepType.LAST) else False, \
                 **time_step.observation)
 
     def reset(self):
