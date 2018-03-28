@@ -47,8 +47,6 @@ def run_experiment(argv):
                         help='Name of the tabular log file (in csv).')
     parser.add_argument('--text_log_file', type=str, default='debug.log',
                         help='Name of the text log file (in pure text).')
-    parser.add_argument('--tensorboard_log_dir', type=str, default='progress',
-                        help='Name of the tensorboard data log folder.')
     parser.add_argument('--params_log_file', type=str, default='params.json',
                         help='Name of the parameter log file (in json).')
     parser.add_argument('--variant_log_file', type=str, default='variant.json',
@@ -89,7 +87,6 @@ def run_experiment(argv):
     tabular_log_file = osp.join(log_dir, args.tabular_log_file)
     text_log_file = osp.join(log_dir, args.text_log_file)
     params_log_file = osp.join(log_dir, args.params_log_file)
-    tensorboard_log_dir = osp.join(log_dir, args.tensorboard_log_dir)
 
     if args.variant_data is not None:
         variant_data = pickle.loads(base64.b64decode(args.variant_data))
@@ -103,7 +100,6 @@ def run_experiment(argv):
 
     logger.add_text_output(text_log_file)
     logger.add_tabular_output(tabular_log_file)
-    logger.set_tensorboard_dir(tensorboard_log_dir)
     prev_snapshot_dir = logger.get_snapshot_dir()
     prev_mode = logger.get_snapshot_mode()
     logger.set_snapshot_dir(log_dir)
