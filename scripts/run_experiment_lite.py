@@ -49,6 +49,8 @@ def run_experiment(argv):
                         help='Name of the text log file (in pure text).')
     parser.add_argument('--tensorboard_log_dir', type=str, default='progress',
                         help='Name of the folder for tensorboard_summary.')
+    parser.add_argument('--tensorboard_step_key', type=str, default=None,
+                        help='Name of the step key in log data which shows the step in tensorboard_summary.')
     parser.add_argument('--params_log_file', type=str, default='params.json',
                         help='Name of the parameter log file (in json).')
     parser.add_argument('--variant_log_file', type=str, default='variant.json',
@@ -110,6 +112,7 @@ def run_experiment(argv):
     logger.set_snapshot_mode(args.snapshot_mode)
     logger.set_snapshot_gap(args.snapshot_gap)
     logger.set_log_tabular_only(args.log_tabular_only)
+    logger.set_tensorboard_step_key(args.tensorboard_step_key)
     logger.push_prefix("[%s] " % args.exp_name)
 
     if args.resume_from is not None:
