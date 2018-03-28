@@ -16,8 +16,6 @@ import json
 import pickle
 import base64
 
-import tensorflow as tf
-
 _prefixes = []
 _prefix_str = ''
 
@@ -33,13 +31,13 @@ _text_fds = {}
 _tabular_fds = {}
 _tabular_header_written = set()
 
-_tensorboard_writer = None
 _snapshot_dir = None
 _snapshot_mode = 'all'
 _snapshot_gap = 1
 
 _log_tabular_only = False
 _header_printed = False
+
 
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
@@ -78,16 +76,6 @@ def remove_tabular_output(file_name):
         _tabular_header_written.remove(_tabular_fds[file_name])
     _remove_output(file_name, _tabular_outputs, _tabular_fds)
 
-def set_tensorboard_dir(dir_name):
-    global _tensorboard_writer
-    if dir_name is None or len(dir_name)==0:
-        if _tensorboard_writer is not None:
-            _tensorboard_writer.close()
-            _tensorboard_writer = None
-    else:
-        mkdir_p(os.path.dirname(dir_name))
-        _tensorboard_writer = tf.summary.FileWriter(dir_name)
-        assert _tensorboard_writer is not None
 
 def set_snapshot_dir(dir_name):
     global _snapshot_dir
@@ -197,22 +185,6 @@ class TerminalTablePrinter(object):
 
 table_printer = TerminalTablePrinter()
 
-def dump_tensorboard(*args, **kwargs):
-    if len(_tabular)>0 and _tensorboard_writer is not None:
-        tabular_dict = dict(_tabular)
-
-        if 'Iteration' in tabular_dict:
-            step = tabular_dict['Iteration']
-        else:
-            step = 0
-
-        summary = tf.Summary()
-        for k,v in tabular_dict.items():
-            summary.value.add(tag=k, simple_value=float(v))
-        _tensorboard_writer.add_summary(summary, int(step))
-        _tensorboard_writer.flush()
-
-
 
 def dump_tabular(*args, **kwargs):
     wh = kwargs.pop("write_header", None)
@@ -223,9 +195,6 @@ def dump_tabular(*args, **kwargs):
             for line in tabulate(_tabular).split('\n'):
                 log(line, *args, **kwargs)
         tabular_dict = dict(_tabular)
-
-        dump_tensorboard(args, kwargs)        
-
         # Also write to the csv files
         # This assumes that the keys in each iteration won't change!
         for tabular_fd in list(_tabular_fds.values()):
