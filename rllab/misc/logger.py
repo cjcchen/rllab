@@ -38,6 +38,8 @@ _snapshot_gap = 1
 _log_tabular_only = False
 _header_printed = False
 
+_tensorboard_default_step=0
+_tensorboard_step_key=None
 
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
@@ -76,6 +78,18 @@ def remove_tabular_output(file_name):
         _tabular_header_written.remove(_tabular_fds[file_name])
     _remove_output(file_name, _tabular_outputs, _tabular_fds)
 
+def set_tensorboard_dir(dir_name):
+    global _tensorboard_writer
+    if dir_name is None or len(dir_name)==0:
+        if _tensorboard_writer is not None:
+            _tensorboard_writer.close()
+            _tensorboard_writer = None
+    else:
+        mkdir_p(os.path.dirname(dir_name))
+        _tensorboard_writer = tf.summary.FileWriter(dir_name)
+        _tensorboard_default_step=0
+        assert _tensorboard_writer is not None
+        print ("tensorboard data will be logged into:",dir_name)
 
 def set_snapshot_dir(dir_name):
     global _snapshot_dir
@@ -105,6 +119,9 @@ def set_log_tabular_only(log_tabular_only):
     global _log_tabular_only
     _log_tabular_only = log_tabular_only
 
+def set_tensorboard_step_key(key):
+    global _tensorboard_step_key
+    _tensorboard_step_key = key
 
 def get_log_tabular_only():
     return _log_tabular_only
@@ -185,6 +202,21 @@ class TerminalTablePrinter(object):
 
 table_printer = TerminalTablePrinter()
 
+def dump_tensorboard(*args, **kwargs):
+    if len(_tabular)>0 and _tensorboard_writer is not None:
+        tabular_dict = dict(_tabular)
+        if _tensorboard_step_key is not None and _tensorboard_step_key in tabular_dict:
+            step = tabular_dict[_tensorboard_step_key]
+        else:
+            global _tensorboard_default_step
+            step = _tensorboard_default_step
+            _tensorboard_default_step+=1
+
+        summary = tf.Summary()
+        for k,v in tabular_dict.items():
+            summary.value.add(tag=k, simple_value=float(v))
+        _tensorboard_writer.add_summary(summary, int(step))
+        _tensorboard_writer.flush()
 
 def dump_tabular(*args, **kwargs):
     wh = kwargs.pop("write_header", None)

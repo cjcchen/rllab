@@ -47,6 +47,8 @@ def run_experiment(argv):
                         help='Name of the tabular log file (in csv).')
     parser.add_argument('--text_log_file', type=str, default='debug.log',
                         help='Name of the text log file (in pure text).')
+    parser.add_argument('--tensorboard_log_dir', type=str, default='progress',
+                        help='Name of the folder for tensorboard_summary.')
     parser.add_argument('--params_log_file', type=str, default='params.json',
                         help='Name of the parameter log file (in json).')
     parser.add_argument('--variant_log_file', type=str, default='variant.json',
