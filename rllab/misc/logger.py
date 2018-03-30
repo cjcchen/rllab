@@ -16,6 +16,7 @@ import json
 import pickle
 import base64
 
+import tensorflow as tf
 _prefixes = []
 _prefix_str = ''
 
@@ -31,6 +32,7 @@ _text_fds = {}
 _tabular_fds = {}
 _tabular_header_written = set()
 
+_tensorboard_writer = None
 _snapshot_dir = None
 _snapshot_mode = 'all'
 _snapshot_gap = 1
@@ -53,7 +55,6 @@ def _remove_output(file_name, arr, fds):
         fds[file_name].close()
         del fds[file_name]
         arr.remove(file_name)
-
 
 def push_prefix(prefix):
     _prefixes.append(prefix)
@@ -227,6 +228,11 @@ def dump_tabular(*args, **kwargs):
             for line in tabulate(_tabular).split('\n'):
                 log(line, *args, **kwargs)
         tabular_dict = dict(_tabular)
+
+        # write to the tensorboard folder 
+        # This assumes that the keys in each iteration won't change!
+        dump_tensorboard(args, kwargs)
+
         # Also write to the csv files
         # This assumes that the keys in each iteration won't change!
         for tabular_fd in list(_tabular_fds.values()):
