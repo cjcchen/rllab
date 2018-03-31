@@ -81,8 +81,8 @@ def remove_tabular_output(file_name):
 
 def set_tensorboard_dir(dir_name):
     global _tensorboard_writer
-    if dir_name is None or len(dir_name)==0:
-        if _tensorboard_writer is not None:
+    if dir_name:
+        if _tensorboard_writer:
             _tensorboard_writer.close()
             _tensorboard_writer = None
     else:
@@ -204,9 +204,9 @@ class TerminalTablePrinter(object):
 table_printer = TerminalTablePrinter()
 
 def dump_tensorboard(*args, **kwargs):
-    if len(_tabular)>0 and _tensorboard_writer is not None:
+    if len(_tabular)>0 and _tensorboard_writer:
         tabular_dict = dict(_tabular)
-        if _tensorboard_step_key is not None and _tensorboard_step_key in tabular_dict:
+        if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
             step = tabular_dict[_tensorboard_step_key]
         else:
             global _tensorboard_default_step
