@@ -84,7 +84,7 @@ def remove_tabular_output(file_name):
 
 def set_tensorboard_dir(dir_name):
     global _tensorboard_writer
-    if dir_name:
+    if not dir_name:
         if _tensorboard_writer:
             _tensorboard_writer.close()
             _tensorboard_writer = None
