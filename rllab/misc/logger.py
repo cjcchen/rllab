@@ -40,8 +40,9 @@ _snapshot_gap = 1
 _log_tabular_only = False
 _header_printed = False
 
-_tensorboard_default_step=0
-_tensorboard_step_key=None
+_tensorboard_default_step = 0
+_tensorboard_step_key = None
+
 
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
@@ -55,6 +56,7 @@ def _remove_output(file_name, arr, fds):
         fds[file_name].close()
         del fds[file_name]
         arr.remove(file_name)
+
 
 def push_prefix(prefix):
     _prefixes.append(prefix)
@@ -79,6 +81,7 @@ def remove_tabular_output(file_name):
         _tabular_header_written.remove(_tabular_fds[file_name])
     _remove_output(file_name, _tabular_outputs, _tabular_fds)
 
+
 def set_tensorboard_dir(dir_name):
     global _tensorboard_writer
     if dir_name:
@@ -88,9 +91,10 @@ def set_tensorboard_dir(dir_name):
     else:
         mkdir_p(os.path.dirname(dir_name))
         _tensorboard_writer = tf.summary.FileWriter(dir_name)
-        _tensorboard_default_step=0
+        _tensorboard_default_step = 0
         assert _tensorboard_writer is not None
-        print ("tensorboard data will be logged into:",dir_name)
+        print("tensorboard data will be logged into:", dir_name)
+
 
 def set_tensorboard_dir(dir_name):
     global _tensorboard_writer
@@ -137,9 +141,6 @@ def set_log_tabular_only(log_tabular_only):
     global _log_tabular_only
     _log_tabular_only = log_tabular_only
 
-def set_tensorboard_step_key(key):
-    global _tensorboard_step_key
-    _tensorboard_step_key = key
 
 def set_tensorboard_step_key(key):
     global _tensorboard_step_key
@@ -225,21 +226,6 @@ class TerminalTablePrinter(object):
 
 table_printer = TerminalTablePrinter()
 
-def dump_tensorboard(*args, **kwargs):
-    if len(_tabular)>0 and _tensorboard_writer:
-        tabular_dict = dict(_tabular)
-        if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
-            step = tabular_dict[_tensorboard_step_key]
-        else:
-            global _tensorboard_default_step
-            step = _tensorboard_default_step
-            _tensorboard_default_step+=1
-
-        summary = tf.Summary()
-        for k,v in tabular_dict.items():
-            summary.value.add(tag=k, simple_value=float(v))
-        _tensorboard_writer.add_summary(summary, int(step))
-        _tensorboard_writer.flush()
 
 def dump_tensorboard(*args, **kwargs):
     if len(_tabular) > 0 and _tensorboard_writer:
@@ -268,7 +254,7 @@ def dump_tabular(*args, **kwargs):
                 log(line, *args, **kwargs)
         tabular_dict = dict(_tabular)
 
-        # write to the tensorboard folder 
+        # write to the tensorboard folder
         # This assumes that the keys in each iteration won't change!
         dump_tensorboard(args, kwargs)
 
