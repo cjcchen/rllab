@@ -45,7 +45,6 @@ _tensorboard_step_key = None
 tensorboard = Summary()
 
 
-
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
         mkdir_p(os.path.dirname(file_name))
@@ -86,7 +85,6 @@ def remove_tabular_output(file_name):
 
 def set_tensorboard_dir(dir_name):
     tensorboard.set_dir(dir_name)
-
 
 
 def set_snapshot_dir(dir_name):
@@ -218,6 +216,7 @@ def dump_tensorboard(*args, **kwargs):
 
     tensorboard.dump_tensorboard(step)
 
+
 def dump_tabular(*args, **kwargs):
     wh = kwargs.pop("write_header", None)
     if len(_tabular) > 0:
@@ -227,7 +226,6 @@ def dump_tabular(*args, **kwargs):
             for line in tabulate(_tabular).split('\n'):
                 log(line, *args, **kwargs)
         tabular_dict = dict(_tabular)
-
 
         # Also write to the csv files
         # This assumes that the keys in each iteration won't change!
