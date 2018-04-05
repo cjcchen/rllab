@@ -98,7 +98,6 @@ def set_tensorboard_dir(dir_name):
 def set_tensorboard_dir(dir_name):
     tensorboard.set_dir(dir_name)
 
-
 def set_snapshot_dir(dir_name):
     global _snapshot_dir
     _snapshot_dir = dir_name
