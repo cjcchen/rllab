@@ -42,7 +42,7 @@ _log_tabular_only = False
 _header_printed = False
 
 _tensorboard_step_key = None
-tensorboard = Summary()
+_tensorboard = Summary()
 
 
 def _add_output(file_name, arr, fds, mode='a'):
@@ -84,7 +84,7 @@ def remove_tabular_output(file_name):
 
 
 def set_tensorboard_dir(dir_name):
-    tensorboard.set_dir(dir_name)
+    _tensorboard.set_dir(dir_name)
 
 
 def set_snapshot_dir(dir_name):
@@ -148,12 +148,12 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    tensorboard.record_scale(str(key), val)
+    _tensorboard.record_scale(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
 
 def record_histogram(key, val):
-    tensorboard.record_histogram(str(key), val)
+    _tensorboard.record_histogram(str(key), val)
 
 
 def push_tabular_prefix(key):
@@ -214,7 +214,7 @@ def dump_tensorboard(*args, **kwargs):
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
 
-    tensorboard.dump_tensorboard(step)
+    _tensorboard.dump_tensorboard(step)
 
 
 def dump_tabular(*args, **kwargs):
