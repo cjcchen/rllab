@@ -16,6 +16,7 @@ import joblib
 import json
 import pickle
 import base64
+import tensorflow as tf
 
 
 _prefixes = []
@@ -33,6 +34,7 @@ _text_fds = {}
 _tabular_fds = {}
 _tabular_header_written = set()
 
+_tensorboard_writer = None
 _snapshot_dir = None
 _snapshot_mode = 'all'
 _snapshot_gap = 1
@@ -42,6 +44,7 @@ _header_printed = False
 
 _tensorboard_step_key=None
 tensorboard=Summary()
+
 
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
@@ -83,6 +86,7 @@ def remove_tabular_output(file_name):
 
 def set_tensorboard_dir(dir_name):
     tensorboard.set_dir(dir_name) 
+
 
 
 def set_snapshot_dir(dir_name):
@@ -211,6 +215,23 @@ def dump_tensorboard(*args, **kwargs):
 
     tensorboard.dump_tensorboard(step)
 
+def dump_tensorboard(*args, **kwargs):
+    if len(_tabular) > 0 and _tensorboard_writer:
+        tabular_dict = dict(_tabular)
+        if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
+            step = tabular_dict[_tensorboard_step_key]
+        else:
+            global _tensorboard_default_step
+            step = _tensorboard_default_step
+            _tensorboard_default_step += 1
+
+        summary = tf.Summary()
+        for k, v in tabular_dict.items():
+            summary.value.add(tag=k, simple_value=float(v))
+        _tensorboard_writer.add_summary(summary, int(step))
+        _tensorboard_writer.flush()
+
+
 def dump_tabular(*args, **kwargs):
     wh = kwargs.pop("write_header", None)
     if len(_tabular) > 0:
@@ -220,6 +241,7 @@ def dump_tabular(*args, **kwargs):
             for line in tabulate(_tabular).split('\n'):
                 log(line, *args, **kwargs)
         tabular_dict = dict(_tabular)
+
 
         # Also write to the csv files
         # This assumes that the keys in each iteration won't change!
