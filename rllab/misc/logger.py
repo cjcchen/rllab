@@ -17,7 +17,6 @@ import json
 import pickle
 import base64
 
-
 _prefixes = []
 _prefix_str = ''
 
@@ -40,8 +39,9 @@ _snapshot_gap = 1
 _log_tabular_only = False
 _header_printed = False
 
-_tensorboard_step_key=None
-tensorboard=Summary()
+_tensorboard_step_key = None
+tensorboard = Summary()
+
 
 def _add_output(file_name, arr, fds, mode='a'):
     if file_name not in arr:
@@ -96,7 +96,7 @@ def set_tensorboard_dir(dir_name):
 
 
 def set_tensorboard_dir(dir_name):
-    tensorboard.set_dir(dir_name) 
+    tensorboard.set_dir(dir_name)
 
 
 def set_snapshot_dir(dir_name):
@@ -160,11 +160,13 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    tensorboard.record_scale(str(key),val) 
+    tensorboard.record_scale(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
-def record_histogram(key,val):
-    tensorboard.record_histogram(str(key),val)
+
+def record_histogram(key, val):
+    tensorboard.record_histogram(str(key), val)
+
 
 def push_tabular_prefix(key):
     _tabular_prefixes.append(key)
@@ -218,12 +220,14 @@ class TerminalTablePrinter(object):
 
 table_printer = TerminalTablePrinter()
 
+
 def dump_tensorboard(*args, **kwargs):
     step = None
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
 
     tensorboard.dump_tensorboard(step)
+
 
 def dump_tabular(*args, **kwargs):
     wh = kwargs.pop("write_header", None)
