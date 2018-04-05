@@ -3,7 +3,6 @@ from enum import Enum
 from rllab.misc.tabulate import tabulate
 from rllab.misc.console import mkdir_p, colorize
 from rllab.misc.autoargs import get_all_parameters
-#from tensorboard_summary import Summary
 from rllab.misc.tensorboard_summary import Summary
 from contextlib import contextmanager
 import numpy as np
