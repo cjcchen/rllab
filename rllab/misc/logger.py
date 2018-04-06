@@ -94,15 +94,12 @@ def set_snapshot_mode(mode):
     global _snapshot_mode
     _snapshot_mode = mode
 
-
 def get_snapshot_gap():
     return _snapshot_gap
-
 
 def set_snapshot_gap(gap):
     global _snapshot_gap
     _snapshot_gap = gap
-
 
 def set_log_tabular_only(log_tabular_only):
     global _log_tabular_only
