@@ -248,8 +248,7 @@ def log_parameters(log_file, args, classes):
             log_params[name] = params
         else:
             log_params[name] = getattr(cls, "__kwargs", dict())
-            log_params[name][
-                "_name"] = cls.__module__ + "." + cls.__class__.__name__
+            log_params[name]["_name"] = cls.__module__ + "." + cls.__class__.__name__
     mkdir_p(os.path.dirname(log_file))
     with open(log_file, "w") as f:
         json.dump(log_params, f, indent=2, sort_keys=True)
@@ -262,13 +261,13 @@ def stub_to_json(stub_sth):
         data = dict()
         for k, v in stub_sth.kwargs.items():
             data[k] = stub_to_json(v)
-        data[
-            "_name"] = stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
+        data["_name"] = stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
         return data
     elif isinstance(stub_sth, instrument.StubAttr):
         return dict(
             obj=stub_to_json(stub_sth.obj),
-            attr=stub_to_json(stub_sth.attr_name))
+            attr=stub_to_json(stub_sth.attr_name)
+        )
     elif isinstance(stub_sth, instrument.StubMethodCall):
         return dict(
             obj=stub_to_json(stub_sth.obj),
@@ -298,10 +297,7 @@ class MyEncoder(json.JSONEncoder):
         if isinstance(o, type):
             return {'$class': o.__module__ + "." + o.__name__}
         elif isinstance(o, Enum):
-            return {
-                '$enum':
-                o.__module__ + "." + o.__class__.__name__ + '.' + o.name
-            }
+            return {'$enum': o.__module__ + "." + o.__class__.__name__ + '.' + o.name}
         return json.JSONEncoder.default(self, o)
 
 
