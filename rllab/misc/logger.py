@@ -1,13 +1,18 @@
-from enum import Enum
 
 from rllab.misc.tabulate import tabulate
-from rllab.misc.console import mkdir_p, colorize
+from rllab.misc.console import mkdir_p
+from rllab.misc.console import colorize
 from rllab.misc.autoargs import get_all_parameters
 from rllab.misc.tensorboard_summary import Summary
+
+import tensorflow as tf
+
 from contextlib import contextmanager
+from enum import Enum
 import numpy as np
-import os
+
 import os.path as osp
+import os
 import sys
 import datetime
 import dateutil.tz
@@ -16,7 +21,6 @@ import joblib
 import json
 import pickle
 import base64
-import tensorflow as tf
 
 _prefixes = []
 _prefix_str = ''
