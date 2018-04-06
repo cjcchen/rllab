@@ -1,4 +1,3 @@
-
 from rllab.misc.tabulate import tabulate
 from rllab.misc.console import mkdir_p
 from rllab.misc.console import colorize
