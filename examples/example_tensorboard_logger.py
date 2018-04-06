@@ -1,5 +1,6 @@
-import numpy as np
 from rllab.misc import logger
+
+import numpy as np
 
 logger.set_tensorboard_dir("./test")
 
