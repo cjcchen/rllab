@@ -6,20 +6,18 @@ from dm_control.rl.environment import StepType
 from dm_control.rl.control import flatten_observation
 
 from rllab.envs.base import Env, Step
-from rllab.envs.dm_control_view import DmControlViewer
+from rllab.envs.dm_control_viewer import DmControlViewer
 from rllab.core.serializable import Serializable
 from rllab.spaces.box import Box
-'''
-This environment will use dm_control toolkit(https://arxiv.org/pdf/1801.00690.pdf) 
-to train and simulate your models.
-'''
-
-
-def _flat_shape(observation):
-    return np.sum(int(np.prod(v.shape)) for k, v in observation.items())
+from rllab.spaces.discrete import Discrete
 
 
 class DmControlEnv(Env, Serializable):
+    '''
+    This environment will use dm_control toolkit(https://arxiv.org/pdf/1801.00690.pdf) 
+    to train and simulate your models.
+    '''
+
     def __init__(
             self,
             domain_name,
@@ -44,10 +42,9 @@ class DmControlEnv(Env, Serializable):
         time_step = self._env.step(action)
         if time_step.reward:
             self._total_reward += time_step.reward
-
         return Step(flatten_observation(time_step.observation), \
                 time_step.reward, \
-                True if (time_step.step_type == StepType.LAST) else False, \
+                time_step.step_type == StepType.LAST, \
                 **time_step.observation)
 
     def reset(self):
@@ -64,14 +61,21 @@ class DmControlEnv(Env, Serializable):
         if self._viewer:
             self._viewer.finish()
 
+    def _flat_shape(self, observation):
+        return np.sum(int(np.prod(v.shape)) for k, v in observation.items())
+
     @property
     def action_space(self):
         action_spec = self._env.action_spec()
-        return Box(action_spec.minimum, action_spec.maximum)
+        if (len(action_spec.shape) == 1) and (-np.inf in action_spec.minimum or
+                                              np.inf in action_spec.maximum):
+            return Discrete(np.prod(action_spec.shape))
+        else:
+            return Box(action_spec.minimum, action_spec.maximum)
 
     @property
     def observation_space(self):
-        flat_dim = _flat_shape(self._env.observation_spec())
+        flat_dim = self._flat_shape(self._env.observation_spec())
         return Box(low=-np.inf, high=np.inf, shape=[flat_dim])
 
     @property

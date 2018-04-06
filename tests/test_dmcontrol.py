@@ -3,30 +3,9 @@ import numpy as np
 from rllab.envs.dm_control_env import DmControlEnv
 from rllab.envs.normalized_env import normalize
 
-# yapf: disable
-model_list = [('ball_in_cup', 'catch'),
-           ("cartpole", "swingup_sparse"),
-           ("cartpole", "balance_sparse"),
-           ("cartpole", "swingup"),
-           ("cartpole", "balance"),
-           ("cheetah", "run"),
-           ("finger", "spin"),
-           ("hopper", "stand"),
-           ("hopper", "hop"),
-           ("humanoid", "stand"),
-           ("humanoid", "run"),
-           ("humanoid", "walk"),
-           ("manipulator", "bring_ball"),
-           ("pendulum", "swingup"),
-           ("point_mass", "easy"),
-           ("reacher", "hard"),
-           ("reacher", "easy"),
-           ("swimmer", "swimmer6"),
-           ("swimmer", "swimmer15"),
-           ("walker", "stand"),
-           ("walker", "run"),
-           ("walker", "walk")]
-# yapf: enable
+from dm_control import suite
+
+model_list = suite.ALL_TASKS
 
 
 def run_task(domain_name, task_name):
@@ -43,7 +22,7 @@ def run_task(domain_name, task_name):
 
     time_step = dmcontrol_env.reset()
     action_spec = dmcontrol_env.action_space
-    for i in range(100):
+    for _ in range(200):
         dmcontrol_env.render()
         action = action_spec.sample()
         next_obs, reward, done, info = dmcontrol_env.step(action)
