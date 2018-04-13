@@ -1,20 +1,20 @@
 import numpy as np
 
-class OrnsteinUhlenbeckProcess:
-    def __init__(self, theta, mu=0, sigma=1, x0=0, dt=1e-2, n_steps_annealing=100, size=1):
 
+class OrnsteinUhlenbeckActionNoise:
+    def __init__(self, mu, sigma, theta=.15, dt=1e-2, x0=None):
         self.theta = theta
-        self.sigma = sigma
-        self.n_steps_annealing = n_steps_annealing
-        self.sigma_step = - self.sigma / float(self.n_steps_annealing)
-        self.x0 = x0
         self.mu = mu
+        self.sigma = sigma
         self.dt = dt
-        self.size = size
+        self.x0 = x0
+        self.reset()
 
-    def generate(self, step):
-        #sigma = max(0, self.sigma_step * step + self.sigma)
-        x = self.x0 + self.theta * (self.mu - self.x0) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.size)
-        self.x0 = x
+    def gen(self):
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
+        self.x_prev = x
         return x
+
+    def reset(self):
+        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
 

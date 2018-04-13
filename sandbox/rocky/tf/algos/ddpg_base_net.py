@@ -1,7 +1,10 @@
 import tensorflow as tf
+import tensorflow.contrib as tc
 import numpy as np
-import ddpg_config 
-from src.ops import fully_connected, batch_norm
+#def _fc(inputs, output_size, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(),\
+#        weights_regularizer=tf.contrib.layers.l2_regularizer(0.00), biases_initializer=tf.constant_initializer(0.0)):
+#    return tf.contrib.layers.fully_connected(inputs, output_size, activation_fn=activation_fn, \
+#            weights_initializer=weights_initializer, weights_regularizer=weights_regularizer, biases_initializer=biases_initializer)
 
 def _fc(x, output_dim, 
         weight_initializer = tf.truncated_normal_initializer(stddev=0.01), 
@@ -24,7 +27,9 @@ def _get_trainable_variables(name):
     res=[]
     for v in variables:
         if v.name.find(name)>=0:
+            print ("get var:",v.name)
             res.append(v)
+    print("len:",len(res))
     return res
 
 def _get_summary_op(name_id):
@@ -33,7 +38,6 @@ def _get_summary_op(name_id):
     scale_value = tf.get_collection("scale_summary")
     for (name, var) in scale_value:
         if var.op.name.find(name_id)>=0:
-            print ("get scale:",var.op.name, name)
             summary_op.append(tf.summary.scalar(name, var))
 
     histogram_value = tf.get_collection("histogram_summary")
@@ -52,181 +56,209 @@ def _get_summary_op(name_id):
     
     return summary_op
 
-class ActorNet:
-    def __init__(self, session, state_dim, action_dim, action_bound):
-        self._session = session
+class Model(object):
+    def __init__(self, name):
+        self.name = name
+    
 
-        with tf.variable_scope('actor_online'):
-            self._state, self._action, self._action_bound, self._is_training \
-                            = self._build_net(state_dim, action_dim, action_bound)
-            self._params = _get_trainable_variables('actor_online')
+    @property
+    def vars(self):
+        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
 
-        with tf.variable_scope('actor_target'):
-            self._target_state, self._target_action, self._target_action_bound, self._target_is_training \
-                            = self._build_net(state_dim, action_dim, action_bound)
-            self._target_params = _get_trainable_variables('actor_target')
+    @property
+    def trainable_vars(self):
+        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
 
-        #copy params to target network
-        self._update_target_params = []
-        for i in range(len(self._target_params)):
-            new_params = tf.multiply(self._params[i], ddpg_config.TAU) + tf.multiply(self._target_params[i], 1-ddpg_config.TAU)
-            update_op = self._target_params[i].assign(new_params)
-            self._update_target_params.append(update_op)
+    @property
+    def perturbable_vars(self):
+        return [var for var in self.trainable_vars if 'LayerNorm' not in var.name]
 
-        with tf.variable_scope('actor_update'):
-            #dJ/da
-            self._action_gradients = tf.placeholder(tf.float32, [None, action_dim])
-            #dJ/dw = dJ/da*da/dw
-            actor_gradients = tf.gradients(self._action, self._params, -self._action_gradients)
-            #tf.add_to_collection('histogram_summary',actor_gradients);
+    def setup_target_net(self, target_net, tau):
+        vars = self.trainable_vars
+        target_vars = target_net.trainable_vars
 
-            self._optimize = tf.train.AdamOptimizer(ddpg_config.ACTOR_LEARNING_RATE).apply_gradients(zip(actor_gradients, self._params))
+        soft_updates = []
+        vars = vars[0: len(target_vars)]
+        print ("var:",vars)
+        print ("tar var:",target_vars)
+        print (len(vars), len(target_vars))
 
-        self._summary_str_op = _get_summary_op('actor_online')
-        self._summary_str_op += _get_summary_op('actor_update')
-        self._summary_str_op = tf.summary.merge(self._summary_str_op)
+        for var, target_var in zip(vars, target_vars):
+            soft_updates.append(tf.assign(target_var, (1. - tau) * target_var + tau * var))
+        assert len(soft_updates) == len(vars)
+        self._update_paras = tf.group(*soft_updates)
 
 
-    def _build_net(self, state_dim, action_dim, action_bound):
-        state = tf.placeholder(tf.float32, shape=[None,state_dim], name="state")
-        is_training = tf.placeholder(tf.bool, name="is_training")
 
-        with tf.variable_scope('fc1'):
-            fc1_out = _fc(state, 400)
-            fc1_out = _bn(fc1_out, is_training, scope_bn="BN_0")
-            fc1_out = tf.nn.relu(fc1_out)
-            tf.add_to_collection('histogram_summary',fc1_out);
+class ActorNet(Model):
+    def __init__(self, sess, action_dim,lr = 1e-4, bound = 1):
+        self.name='actor'
+        self._action_dim = action_dim
+        self._lr = lr
+        self._session = sess
+        self._bound = bound
 
-        with tf.variable_scope('fc2'):
-            fc2_out = _fc(fc1_out, 300)
-            fc2_out = _bn(fc2_out, is_training, scope_bn="BN_1")
-            fc2_out = tf.nn.relu(fc2_out)
-            tf.add_to_collection('histogram_summary',fc2_out);
-       
-        with tf.variable_scope('output'):
-            output = _fc(fc2_out, action_dim)
-            output = tf.tanh(output) 
-            tf.add_to_collection('histogram_summary',output);
+    def build_net(self, state):
+        self._state = state
+        self._action = self._build_net(state)*self._bound
 
-        scaled_outputs = tf.multiply(output, action_bound) 
+        with tf.variable_scope(self.name) as scope:
+            self._optimizer = tf.train.AdamOptimizer(self._lr,beta1=0.9, beta2=0.999, epsilon=1e-08)
 
-        return state, output, scaled_outputs, is_training
+            #self.action_gradient = tf.placeholder(tf.float32, [None, self.action_dim])
+            #self.unnormalized_actor_gradients = tf.gradients(self.action, self.trainable_vars, -self.action_gradient)
+            #self.actor_gradients = list(map(lambda x: tf.div(x, 64), self.unnormalized_actor_gradients))
+
+            #self.optimize = tf.train.AdamOptimizer(1e-4).apply_gradients(zip(self.actor_gradients, self.trainable_vars))
+
+
+    def _build_net(self, state):
+
+        with tf.variable_scope(self.name) as scope:
+            x = state
+            x = tf.layers.dense(x, 64)
+            tf.add_to_collection('histogram_summary',x);
+            x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, 64)
+            x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.layers.dense(x, self._action_dim, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            x = tf.nn.tanh(x)
+
+        return x
     
     def predict(self, state):
-        return self._session.run(self._action_bound, feed_dict = {
+        #print ("predict:",self._state, state.shape)
+        return self._session.run(self.action, feed_dict = {
             self._state:state, 
-            self._is_training:False
-        })
-
-    def predict_target(self, state):
-        return self._session.run(self._target_action_bound, feed_dict = {
-            self._target_state:state, 
-            self._target_is_training:False
         })
 
 
     def train(self, state, grads):
-        return self._session.run([self._summary_str_op,self._optimize], feed_dict={
+        return self._session.run([self._optimize], feed_dict={
             self._state: state,
             self._action_gradients: grads,
-            self._is_training: True
             })
 
     def update_target_net(self):
-        self._session.run(self._update_target_params)
+        self._session.run(self._update_paras)
 
-class CriticNet:
-    def __init__(self, session, state_dim, action_dim):
-        self._session = session
+    @property
+    def optimizer(self):
+        return self._optimizer
 
-        with tf.variable_scope('critic_online'):
-            self._state, self._action, self._q_value, self._is_training = self._build_net(state_dim, action_dim)
-            self._params = _get_trainable_variables('critic_online')
+    @property
+    def action(self):
+        return self._action
 
-        with tf.variable_scope('critic_target'):
-            self._target_state, self._target_action, self._target_q_value, self._target_is_training = self._build_net(state_dim, action_dim)
-            self._target_params = _get_trainable_variables('critic_target')
+class CriticNet(Model):
+    def __init__(self, sess, weight_decay = 0.01, gamma = 0.99, lr = 1e-3):
+        self.name='critic'
 
-
-        self._update_target_params = []
-        for i in range(len(self._target_params)):
-            new_params = tf.multiply(self._params[i], ddpg_config.TAU) + tf.multiply(self._target_params[i], 1-ddpg_config.TAU)
-            update_op = self._target_params[i].assign(new_params)
-            self._update_target_params.append(update_op)
-
-
-        with tf.variable_scope('critic_update'):
-            self._labels = tf.placeholder(tf.float32, [None, 1], name="labels")
-
-            # L2 loss
-            self._loss = tf.reduce_mean(tf.squared_difference(self._labels, self._q_value))
-            self._optimize = tf.train.AdamOptimizer(ddpg_config.CRITIC_LEARNING_RATE).minimize(self._loss)
-
-            tf.add_to_collection('scale_summary',('loss',self._loss));
-
-            # used for calculate the gradient of action net
-            self._action_grads = tf.gradients(self._q_value, self._action)
-            tf.add_to_collection('histogram_summary',self._action_grads);
-
-        self._summary_str_op = _get_summary_op('critic_online')
-        self._summary_str_op += _get_summary_op('critic_update')
-        self._summary_str_op = tf.summary.merge(self._summary_str_op)
-
-    def _build_net(self, state_dim, action_dim):
-        state = tf.placeholder(tf.float32, shape=[None,state_dim], name="states")
-        action = tf.placeholder(tf.float32, shape=[None, action_dim], name="actions")
-
-        is_training = tf.placeholder(tf.bool)
-
-        with tf.variable_scope('fc1'):
-            fc1_out = _fc(state, 400)
-            #fc1_out = _bn(fc1_out, is_training, scope_bn="BN_0")
-            fc1_out = tf.nn.relu(fc1_out)
-            tf.add_to_collection('histogram_summary',fc1_out);
+        self._weight_decay = weight_decay
+        self._gamma = gamma
+        self._lr = lr
+        self._session = sess
     
-        with tf.variable_scope('fc2'):
-            fc2_in = tf.concat([fc1_out, action], 1)
-            fc2_out = _fc(fc2_in, 300)
-            #fc2_out = _bn(fc2_out, is_training, scope_bn="BN_1")
-            fc2_out = tf.nn.relu(fc2_out)
-            tf.add_to_collection('histogram_summary',fc2_out);
-       
-        with tf.variable_scope('output'):
-            output = _fc(fc2_out, 1)
-            tf.add_to_collection('histogram_summary',output);
+    def build_net(self, state, action, reward, terminal, target_q, action_predict):
+        self._state = state
+        self._action = action
+        self._reward = reward
+        self._target_q = target_q
+        self._terminal = terminal
+        
+        self._q_value = self._build_net(state, action)
+        #for calculating grade of actor, no meaning
+        self._q_value_predict = self._build_net(state, action_predict, True)
+        
+        self._get_target_Q(reward, terminal)
+        self._get_loss(self._target_q)
+        self._action_loss = -tf.reduce_mean(self._q_value_predict)
 
-        return state, action, output, is_training
+    def _get_target_Q(self, rewards, terminals):
+        self._target_Q = rewards + (1. - terminals) * self._gamma * self._q_value_predict
+
+    def _get_loss(self, target_q):
+        self._loss = tf.reduce_mean(tf.square(target_q - self._q_value))
+
+        critic_reg_vars = [var for var in self.trainable_vars if 'kernel' in var.name and 'output' not in var.name]
+
+        if self._weight_decay > 0.:
+            vars = [var for var in self.trainable_vars if 'kernel' in var.name and 'output' not in var.name]
+            self._loss += tc.layers.apply_regularization(tc.layers.l2_regularizer(self._weight_decay), weights_list=vars)
+
+        self._optimizer = tf.train.AdamOptimizer(self._lr, beta1=0.9, beta2=0.999, epsilon=1e-08)
+        self._action_grads = tf.gradients(self._loss, self._action)
+
+
+    def _build_net(self, state, action, reuse=False):
+
+        with tf.variable_scope(self.name) as scope:
+            if reuse:
+                scope.reuse_variables()
+            x = state
+            x = tf.layers.dense(x, 64)
+            x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            x = tf.concat([x, action], axis=-1)
+            x = tf.layers.dense(x, 64)
+            x = tc.layers.layer_norm(x, center=True, scale=True)
+            x = tf.nn.relu(x)
+
+            output = tf.layers.dense(x, 1, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+
+        return output
     
     def predict(self, state, action):
         return self._session.run(self._q_value, feed_dict = {
                     self._state:state, 
                     self._action:action, 
-                    self._is_training:False
                     })
 
-    def predict_target(self, state, action):
-        return self._session.run(self._target_q_value, feed_dict = {
-                    self._target_state:state, 
-                    self._target_action:action, 
-                    self._target_is_training:False
-                    })
+    def predict_target_Q(self, state, reward, termial):
+        return self._session.run(self.target_Q, feed_dict={
+            self._state: state,
+            self._reward: reward,
+            self._terminal: termial,
+        })
 
 
     def train(self, state, action, labels):
-        return self._session.run([self._summary_str_op, self._loss, self._optimize], feed_dict={
+        return self._session.run([self._loss, self._optimize, self.action_grads], feed_dict={
             self._state: state,
             self._action: action,
             self._labels: labels,
-            self._is_training: True
             })
 
     def action_gradients(self, state, action):
         return self._session.run(self._action_grads, feed_dict={
             self._state: state,
             self._action: action,
-            self._is_training: False
         })
 
-
     def update_target_net(self):
-        self._session.run(self._update_target_params)
+        self._session.run(self._update_paras)
+
+    @property
+    def target_Q(self):
+        return self._target_Q
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+    
+    @property
+    def action_grads(self):
+        return self._action_grads
+
+    @property
+    def loss(self):
+        return self._loss
+
+    @property
+    def action_loss(self):
+        return self._action_loss

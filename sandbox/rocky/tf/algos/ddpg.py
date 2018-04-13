@@ -1,147 +1,158 @@
+from copy import copy
 
 from ddpg_base_net import ActorNet, CriticNet
-from noise import OrnsteinUhlenbeckProcess
 from replay_buffer import ReplayBuffer
+from noise import OrnsteinUhlenbeckActionNoise
+#from noise1 import OrnsteinUhlenbeckProcess
 
-import ddpg_config 
-import tensorflow as tf
 import numpy as np
-import random
+import tensorflow as tf
+import tensorflow.contrib as tc
 
-OU_THETA = 0.15
-OU_MU = 0.
-OU_SIGMA = 0.3
 
-class DDPG:
-    def __init__(
-            self,
-            env,
-            policy = None,
-            qf = None,
-            batch_size=32,
-            n_epochs=1000000,
-            epoch_length=10000,
-            min_pool_size=10000,
-            replay_pool_size=1000000,
-            discount=0.99,
-            soft_target=True,
-            soft_target_tau=0.001,
-            scale_reward=1.0,
-            noise_stddev=0.0001,
-            plot=False,
-            log_dir=None):
+
+class DDPG(object):
+    def __init__(self,env, gamma = 0.99, tau = 0.01, observation_range= (-5,5), action_range= (-1,1), 
+        actor_lr = 1e-4, critic_lr = 1e-3, reward_scale = 1, batch_size = 64, critic_l2_weight_decay = 0.01,
+        clip_norm = None, log_dir="test2"
+        ):
 
         self._env = env
-        self._batch_size=batch_size
-        self._n_epochs=n_epochs
-        self._epoch_length=epoch_length
-        self._min_pool_size=min_pool_size
-        self._replay_pool_size=replay_pool_size
-        self._discount=discount
-        self._soft_target=soft_target
-        self._soft_target_tau=soft_target_tau
-        self._scale_reward=scale_reward
-
-        self._env =  env
-
-        state_dim = env.observation_space.shape[0]
-        action_dim = env.action_space.shape[0]
-        action_bound = env.action_space.high
-
         self._session = tf.Session()
 
-        with tf.variable_scope('actor_net'):
-            self._actor_net = ActorNet(self._session, state_dim, action_dim, action_bound )
-        with tf.variable_scope('critic_net'):
-            self._critic_net = CriticNet(self._session, state_dim, action_dim)
+        observation_shape = env.observation_space.shape
+        action_shape = env.action_space.shape
+        nb_actions =  nb_actions = env.action_space.shape[-1]
+        
+        print ("nb actions:",nb_actions)
+        action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(0.02) * np.ones(nb_actions))
 
-        nb_actions = env.action_space.shape[-1]
-        #self._noise = OrnsteinUhlenbeckProcess(mu=np.zeros(nb_actions), sigma=float(noise_stddev)*np.ones(nb_actions))
-        self._noise = OrnsteinUhlenbeckProcess(ddpg_config.OU_THETA, mu=ddpg_config.OU_MU, sigma=ddpg_config.OU_SIGMA, n_steps_annealing=ddpg_config.EXPLORATION_EPISODES)
-        self._replay_buffer = ReplayBuffer(self._replay_pool_size)
+        # Inputs.
+        self._state = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='state')
+        self._next_state = tf.placeholder(tf.float32, shape=(None,) + observation_shape, name='next_state')
+        self._terminals = tf.placeholder(tf.float32, shape=(None, 1), name='terminals')
+        self._rewards = tf.placeholder(tf.float32, shape=(None, 1), name='rewards')
+        self._actions = tf.placeholder(tf.float32, shape=(None,) + action_shape, name='actions')
+        self._critic_target = tf.placeholder(tf.float32, shape=(None, 1), name='critic_target')
 
-        self._global_step = 0
-        self._batch_size = 64
+        self._observation_shape = observation_shape
+        self._action_shape = action_shape
+
+        # Parameters.
+        self._tau = tau
+        self._action_noise = action_noise
+        self._action_range = action_range
+        self._clip_norm = clip_norm
+        self._reward_scale = reward_scale
+        self._batch_size = batch_size
+
+
+        state_dim = observation_shape[0]
+        action_dim = observation_shape[-1]
+
+        #actor
+        self._actor_net = ActorNet(self._session, nb_actions, lr = actor_lr)
+        self._target_actor = copy(self._actor_net)
+        self._target_actor.name = 'target_actor'
+        
+
+        #critic
+        self._critic_net = CriticNet(self._session, gamma = gamma, lr = critic_lr, weight_decay = critic_l2_weight_decay)
+        self._target_critic = copy(self._critic_net)
+        self._target_critic.name = 'target_critic'
+
+        #replay buffer
+        self._replay_buffer = ReplayBuffer(1e6)
 
         self._summary_writer = tf.summary.FileWriter(log_dir, self._session.graph)
+        self._initialize()
+
+    def _initialize(self):
+        #build network
+        self._actor_net.build_net(self._state)
+        self._target_actor.build_net(self._next_state)
+
+        self._critic_net.build_net(self._state, self._actions, self._rewards, self._terminals, self._critic_target, self._actor_net.action)
+        self._target_critic.build_net(self._next_state, self._actions, self._rewards, self._terminals, self._critic_target, self._target_actor.action)
+
+        #calculate critic grade
+        grads = tf.gradients(self._critic_net.loss, self._critic_net.trainable_vars)
+        if(self._clip_norm):
+            grads, _ = tf.clip_by_global_norm(grads, self._clip_norm) # gradient clipping
+        grads_and_vars = list(zip(grads, self._critic_net.trainable_vars))
+        self._critic_train_op = self._critic_net.optimizer.apply_gradients(grads_and_vars)
+
+        #calculate actor grade
+        a_grads = tf.gradients(self._critic_net.action_loss, self._actor_net.trainable_vars)
+        if(self._clip_norm):
+            a_grads, _ = tf.clip_by_global_norm(a_grads, self._clip_norm) # gradient clipping
+        a_grads_and_vars = list(zip(a_grads, self._actor_net.trainable_vars))
+        self._actor_train_op = self._actor_net.optimizer.apply_gradients(a_grads_and_vars)
+
+        #setup network to target network params update op 
+        self._actor_net.setup_target_net(self._target_actor, self._tau)
+        self._critic_net.setup_target_net(self._target_critic, self._tau)
+
         self._session.run(tf.global_variables_initializer())
 
-    def train(self):
-        for epoch in range(self._n_epochs):
-            state=self._env.reset()
-            #self._noise.reset()
-            total_reward = 0.0
+    def _train_net(self):
+        # Get a batch.
+        [state, action, reward, terminal, next_state] = self._replay_buffer.get_batch_data(self._batch_size)
+        reward = reward.reshape(-1,1)
+        terminal = terminal.reshape(-1,1)
 
-            for step in range(self._epoch_length):
-                self._env.render()
-                if self._global_step < self._min_pool_size:
-                    action = self._env.action_space.sample()
-                else:
-                    #action = np.clip(self._actor_net.predict(np.array(state).reshape(1,-1))[0] + self._noise.generate(), -1, 1) 
-                    action = np.clip(self._actor_net.predict(np.array(state).reshape(1,-1))[0] + self._noise.generate(step), -1, 1) 
-            
-                next_state, reward, terminal, info = self._env.step(action) 
-                self._replay_buffer.add_data(state,action,reward*self._scale_reward,terminal, next_state)
-                self.train_net()
+        target_Q = self._target_critic.predict_target_Q(next_state, reward, terminal)
 
-                state = next_state
-                total_reward += reward
-                self._global_step +=1
-                if terminal:
-                    break
+        ops = [self._actor_train_op, self._critic_train_op]
+        self._session.run(ops, feed_dict={
+            self._state: state,
+            self._actions: action,
+            self._critic_target: target_Q,
+        })
+    
+        self._actor_net.update_target_net()
+        self._critic_net.update_target_net()
+        return 
 
-            self.report_total_reward(total_reward, epoch)
-            print ("epoch %d, total reward %lf\n" %(epoch, total_reward))
-
-    def get_action(self, state):
-        return self._actor_net.predict(np.array(state).reshape(1,-1))
-
-    def train_net(self):
-        if self._replay_buffer.get_buffer_size() > self._min_pool_size:
-            [state, action, reward, terminal, next_state] = self._replay_buffer.get_batch_data(self._batch_size)
-
-            target_q_value = self.calculate_target(reward, terminal, next_state)
-            critic_summary, loss,_=self._critic_net.train( state, action, target_q_value )
-
-            action_out = self._actor_net.predict(state)
-            action_grads = self._critic_net.action_gradients(state, action_out)
-        
-            actor_summary,_=self._actor_net.train(state, action_grads[0])
-
-            self._actor_net.update_target_net()
-            self._critic_net.update_target_net()
-
-            summary = tf.Summary()
-            summary.value.add(tag='rollout/loss', simple_value=loss)
-            self._summary_writer.add_summary(summary, self._global_step) 
-        
-            self._summary_writer.add_summary(actor_summary, self._global_step) 
-            self._summary_writer.add_summary(critic_summary, self._global_step) 
-            
-            if self._global_step % 100==0:
-                print ("train loss: %f, buffer size %d\n"%(loss,self._replay_buffer.get_buffer_size())) 
-                #print ("train loss: %f, buffer size %d\n"%(loss,len(self.replay_buffer))) 
-                 
-
-    def calculate_target(self, rewards, terminals, next_states):
-        next_state_action = self._actor_net.predict_target(next_states)
-        next_state_q_value = self._critic_net.predict_target(next_states, next_state_action)
-
-        new_target = rewards + self._discount * next_state_q_value * (1-terminals.astype(float))
-        targets = []
-        for i, r in enumerate(rewards):
-            if terminals[i]:
-                targets.append(r)
-            else:
-                targets.append(r + self._discount * next_state_q_value[i])
-        targets = np.array(targets).reshape(-1,1)
-        assert targets.shape[1] == 1
-        return targets
-
-    def report_total_reward(self,val, step):
+    def _report_total_reward(self, reward, step):
         summary = tf.Summary()
-        summary.value.add(tag='rollout/reward', simple_value=float(val))
-        summary.value.add(tag='train/episode_reward', simple_value=float(val))
+        summary.value.add(tag='rollout/reward', simple_value=float(reward))
+        summary.value.add(tag='train/episode_reward', simple_value=float(reward))
         self._summary_writer.add_summary(summary, step) 
-        print ("step :%d reward %d, buffer size %d\n" %(step, val, self._replay_buffer.get_buffer_size()))
+
+    def predict(self, state):
+        action = self._actor_net.predict(np.array(state).reshape(1,-1))[0]
+        noise = self._action_noise.gen()
+        action = action + noise
+        action = np.clip(action, self._action_range[0], self._action_range[1])
+        return action
+
+    def train(self, epochs=500, epoch_cycles=20, rollout_steps=100, train_steps=50):
+        state=self._env.reset()
+        self._action_noise.reset()
+        total_reward = 0.0
+        reward_list = []
+        cyc_round = 0
+        max_action = self._env.action_space.high
+        for epoch in range(epochs):
+            for step in range(epoch_cycles):
+                for rollout in range(rollout_steps):
+                    #self._env.render()
+                    action = self.predict(state) 
+
+                    next_state, reward, terminal, info = self._env.step(action*max_action)
+                    self._replay_buffer.add_data(state,action,reward*self._reward_scale,terminal, next_state)
+                    state = next_state
+                    total_reward += reward
+                    if terminal:
+                        self._report_total_reward(total_reward, cyc_round)
+                        print ("epoch %d, total reward %lf\n" %(cyc_round, total_reward))
+                        cyc_round +=1
+                        total_reward = 0
+                        state=self._env.reset()
+                        self._action_noise.reset()
+
+                for train in range(train_steps):
+                    self._train_net()
+
 
