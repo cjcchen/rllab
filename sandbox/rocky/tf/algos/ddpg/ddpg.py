@@ -1,10 +1,10 @@
 from sandbox.rocky.tf.algos.ddpg.ddpg_base_net import ActorNet, CriticNet
 from sandbox.rocky.tf.algos.ddpg.replay_buffer import ReplayBuffer
-from sandbox.rocky.tf.algos.ddpg.noise import OrnsteinUhlenbeckActionNoise
 
+import tensorflow as tf
 from copy import copy
 import numpy as np
-import tensorflow as tf
+import os
 
 
 class DDPG(object):
@@ -20,7 +20,9 @@ class DDPG(object):
                  batch_size=64,
                  critic_l2_weight_decay=0.01,
                  clip_norm=None,
+                 action_noise = None,
                  plot=False,
+                 check_point_dir = None,
                  log_dir=None):
 
         self._env = env
@@ -32,8 +34,20 @@ class DDPG(object):
         actions_dim = env.action_space.shape[-1]
         self._max_action = self._env.action_space.high
 
-        action_noise = OrnsteinUhlenbeckActionNoise(
-            mu=np.zeros(actions_dim), sigma=float(0.02) * np.ones(actions_dim))
+
+        # Parameters.
+        self._observation_shape = observation_shape
+        self._action_shape = action_shape
+
+        self._tau = tau
+        self._action_noise = action_noise
+        self._action_range = action_range
+        self._clip_norm = clip_norm
+        self._reward_scale = reward_scale
+        self._batch_size = batch_size
+        self._plot = plot
+        self._check_point_dir = check_point_dir
+        self._saver = None
 
         # Inputs.
         self._state = tf.placeholder(
@@ -49,17 +63,6 @@ class DDPG(object):
         self._critic_target = tf.placeholder(
             tf.float32, shape=(None, 1), name='critic_target')
 
-        self._observation_shape = observation_shape
-        self._action_shape = action_shape
-
-        # Parameters.
-        self._tau = tau
-        self._action_noise = action_noise
-        self._action_range = action_range
-        self._clip_norm = clip_norm
-        self._reward_scale = reward_scale
-        self._batch_size = batch_size
-        self._plot = plot
 
         #actor
         self._actor_net = ActorNet(self._session, actions_dim, lr=actor_lr)
@@ -104,7 +107,9 @@ class DDPG(object):
         self._actor_net.setup_target_net(self._target_actor, self._tau)
         self._critic_net.setup_target_net(self._target_critic, self._tau)
 
-        self._session.run(tf.global_variables_initializer())
+        self._global_step = tf.Variable(initial_value=0, name='global_step', trainable=False)
+
+        self.load_session()
 
     def _train_net(self):
         # Get a batch.
@@ -134,8 +139,9 @@ class DDPG(object):
 
     def predict(self, state):
         action = self._actor_net.predict(np.array(state).reshape(1, -1))[0]
-        noise = self._action_noise.gen()
-        action = action + noise
+        if self._action_noise:
+            noise = self._action_noise.gen()
+            action = action + noise
         action = np.clip(action, self._action_range[0], self._action_range[1])
         return action
 
@@ -145,9 +151,11 @@ class DDPG(object):
               rollout_steps=100,
               train_steps=50):
         state = self._env.reset()
-        self._action_noise.reset()
+        if self._action_noise:
+            self._action_noise.reset()
         total_reward = 0.0
-        cyc_round = 0
+        episode_step = self._session.run(self._global_step)
+
         for epoch in range(epochs):
             for step in range(epoch_cycles):
                 for rollout in range(rollout_steps):
@@ -163,13 +171,43 @@ class DDPG(object):
                     state = next_state
                     total_reward += reward
                     if terminal:
-                        self._report_total_reward(total_reward, cyc_round)
-                        print("epoch %d, total reward %lf\n" % (cyc_round,
+                        self._report_total_reward(total_reward, episode_step)
+                        print("epoch %d, total reward %lf\n" % (episode_step,
                                                                 total_reward))
-                        cyc_round += 1
+                        episode_step = self._session.run(self._global_step.assign_add(1))
                         total_reward = 0
                         state = self._env.reset()
-                        self._action_noise.reset()
+                        if self._action_noise:
+                            self._action_noise.reset()
 
                 for train in range(train_steps):
                     self._train_net()
+            self.save_session(episode_step)
+
+
+
+    def load_session(self):
+        if not self._check_point_dir:
+            return
+
+        if not self._saver:
+            self._saver = tf.train.Saver()
+        try:
+            print("Trying to restore last checkpoint ...:",self._check_point_dir)
+            last_chk_path = tf.train.latest_checkpoint(checkpoint_dir=self._check_point_dir)
+            self._saver.restore(self._session, save_path=last_chk_path)
+            print("restore last checkpoint %s done"%self._check_point_dir)
+        except Exception as e:
+            if not os.path.exists(self._check_point_dir):
+                 os.mkdir(self._check_point_dir)
+            assert( os.path.exists(self._check_point_dir) ) , "%s check point file create fail" % self._check_point_dir
+            print("Failed to restore checkpoint. Initializing variables instead."),e
+            self._session.run(tf.global_variables_initializer())
+
+
+    def save_session(self,step):
+        if not self._saver:
+            return
+        save_path = self._check_point_dir + "/event"
+        self._saver.save(self._session, save_path=save_path, global_step=step) 
+
