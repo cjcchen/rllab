@@ -11,7 +11,7 @@ import tensorflow as tf
 class DDPG(object):
     def __init__(self,env, gamma = 0.99, tau = 0.01, observation_range= (-5,5), action_range= (-1,1), 
         actor_lr = 1e-4, critic_lr = 1e-3, reward_scale = 1, batch_size = 64, critic_l2_weight_decay = 0.01,
-        clip_norm = None, log_dir="test_cm1"
+        clip_norm = None, plot = False, log_dir=None
         ):
 
         self._env = env
@@ -55,8 +55,11 @@ class DDPG(object):
 
         #replay buffer
         self._replay_buffer = ReplayBuffer(1e6)
-
-        self._summary_writer = tf.summary.FileWriter(log_dir, self._session.graph)
+        
+        if log_dir:
+            self._summary_writer = tf.summary.FileWriter(log_dir, self._session.graph)
+        else:
+            self._summary_writer = None
         self._initialize()
 
     def _initialize(self):
@@ -96,7 +99,8 @@ class DDPG(object):
         summary = tf.Summary()
         summary.value.add(tag='rollout/reward', simple_value=float(reward))
         summary.value.add(tag='train/episode_reward', simple_value=float(reward))
-        self._summary_writer.add_summary(summary, step) 
+        if self._summary_writer:
+            self._summary_writer.add_summary(summary, step) 
 
     def predict(self, state):
         action = self._actor_net.predict(np.array(state).reshape(1,-1))[0]
@@ -114,7 +118,8 @@ class DDPG(object):
         for epoch in range(epochs):
             for step in range(epoch_cycles):
                 for rollout in range(rollout_steps):
-                    #self._env.render()
+                    if plot:
+                        self._env.render()
                     action = self.predict(state) 
 
                     next_state, reward, terminal, info = self._env.step(action*max_action)
