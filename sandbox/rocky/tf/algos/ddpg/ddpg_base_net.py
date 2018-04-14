@@ -15,31 +15,6 @@ def _norm(x):
     return tc.layers.layer_norm(x, center=True, scale=True)
 
 
-def _get_summary_op(name_id):
-
-    summary_op = []
-    scale_value = tf.get_collection("scale_summary")
-    for (name, var) in scale_value:
-        if var.op.name.find(name_id) >= 0:
-            summary_op.append(tf.summary.scalar(name, var))
-
-    histogram_value = tf.get_collection("histogram_summary")
-    for var in histogram_value:
-        if isinstance(var, list):
-            for v in var:
-                print(v)
-                if v.op.name.find(name_id) >= 0:
-                    print("get histogram:", v.op.name)
-                    summary_op.append(tf.summary.histogram(v.op.name, v))
-        else:
-            print(var)
-            if var.op.name.find(name_id) >= 0:
-                print("get histogram:", var.op.name)
-                summary_op.append(tf.summary.histogram(var.op.name, var))
-
-    return summary_op
-
-
 class Model(object):
     def __init__(self, name):
         self.name = name
@@ -188,7 +163,6 @@ class CriticNet(Model):
                 var for var in self.trainable_vars
                 if 'kernel' in var.name and 'output' not in var.name
             ]
-            print("wei decay:", vars)
             self._loss += tc.layers.apply_regularization(
                 tc.layers.l2_regularizer(self._weight_decay),
                 weights_list=vars)

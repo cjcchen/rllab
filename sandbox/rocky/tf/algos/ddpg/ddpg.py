@@ -2,6 +2,9 @@ from ddpg_base_net import ActorNet, CriticNet
 from replay_buffer import ReplayBuffer
 from noise import OrnsteinUhlenbeckActionNoise
 
+
+from gym.spaces.discrete import Discrete
+
 from copy import copy
 import numpy as np
 import tensorflow as tf
@@ -27,11 +30,13 @@ class DDPG(object):
         self._session = tf.Session()
 
         observation_shape = env.observation_space.shape
+
         action_shape = env.action_space.shape
-        actions_dim = nb_actions = env.action_space.shape[-1]
+        actions_dim = env.action_space.shape[-1]
+        self._max_action = self._env.action_space.high
 
         action_noise = OrnsteinUhlenbeckActionNoise(
-            mu=np.zeros(nb_actions), sigma=float(0.02) * np.ones(nb_actions))
+            mu=np.zeros(actions_dim), sigma=float(0.02) * np.ones(actions_dim))
 
         # Inputs.
         self._state = tf.placeholder(
@@ -43,7 +48,7 @@ class DDPG(object):
         self._rewards = tf.placeholder(
             tf.float32, shape=(None, 1), name='rewards')
         self._actions = tf.placeholder(
-            tf.float32, shape=(None, ) + action_shape, name='actions')
+            tf.float32, shape=(None, actions_dim), name='actions')
         self._critic_target = tf.placeholder(
             tf.float32, shape=(None, 1), name='critic_target')
 
@@ -57,6 +62,7 @@ class DDPG(object):
         self._clip_norm = clip_norm
         self._reward_scale = reward_scale
         self._batch_size = batch_size
+        self._plot = plot
 
         #actor
         self._actor_net = ActorNet(self._session, actions_dim, lr=actor_lr)
@@ -145,16 +151,15 @@ class DDPG(object):
         self._action_noise.reset()
         total_reward = 0.0
         cyc_round = 0
-        max_action = self._env.action_space.high
         for epoch in range(epochs):
             for step in range(epoch_cycles):
                 for rollout in range(rollout_steps):
-                    if plot:
+                    if self._plot:
                         self._env.render()
                     action = self.predict(state)
 
                     next_state, reward, terminal, info = self._env.step(
-                        action * max_action)
+                        action * self._max_action)
                     self._replay_buffer.add_data(state, action,
                                                  reward * self._reward_scale,
                                                  terminal, next_state)
