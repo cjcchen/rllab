@@ -1,7 +1,6 @@
-from ddpg_base_net import ActorNet, CriticNet
-from replay_buffer import ReplayBuffer
-from noise import OrnsteinUhlenbeckActionNoise
-
+from sandbox.rocky.tf.algos.ddpg.ddpg_base_net import ActorNet, CriticNet
+from sandbox.rocky.tf.algos.ddpg.replay_buffer import ReplayBuffer
+from sandbox.rocky.tf.algos.ddpg.noise import OrnsteinUhlenbeckActionNoise
 
 from gym.spaces.discrete import Discrete
 
