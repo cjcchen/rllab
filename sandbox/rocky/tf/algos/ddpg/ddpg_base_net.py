@@ -86,8 +86,7 @@ class ActorNet(Model):
 
     def train(self, state):
         return self._session.run(
-            [self._train_op],
-            feed_dict={
+            [self._train_op], feed_dict={
                 self._state: state,
             })
 
