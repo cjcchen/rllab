@@ -20,9 +20,9 @@ class DDPG(object):
                  batch_size=64,
                  critic_l2_weight_decay=0.01,
                  clip_norm=None,
-                 action_noise = None,
+                 action_noise=None,
                  plot=False,
-                 check_point_dir = None,
+                 check_point_dir=None,
                  log_dir=None):
 
         self._env = env
@@ -33,7 +33,6 @@ class DDPG(object):
         action_shape = env.action_space.shape
         actions_dim = env.action_space.shape[-1]
         self._max_action = self._env.action_space.high
-
 
         # Parameters.
         self._observation_shape = observation_shape
@@ -62,7 +61,6 @@ class DDPG(object):
             tf.float32, shape=(None, actions_dim), name='actions')
         self._critic_target = tf.placeholder(
             tf.float32, shape=(None, 1), name='critic_target')
-
 
         #actor
         self._actor_net = ActorNet(self._session, actions_dim, lr=actor_lr)
@@ -107,7 +105,8 @@ class DDPG(object):
         self._actor_net.setup_target_net(self._target_actor, self._tau)
         self._critic_net.setup_target_net(self._target_critic, self._tau)
 
-        self._global_step = tf.Variable(initial_value=0, name='global_step', trainable=False)
+        self._global_step = tf.Variable(
+            initial_value=0, name='global_step', trainable=False)
 
         self.load_session()
 
@@ -174,7 +173,8 @@ class DDPG(object):
                         self._report_total_reward(total_reward, episode_step)
                         print("epoch %d, total reward %lf\n" % (episode_step,
                                                                 total_reward))
-                        episode_step = self._session.run(self._global_step.assign_add(1))
+                        episode_step = self._session.run(
+                            self._global_step.assign_add(1))
                         total_reward = 0
                         state = self._env.reset()
                         if self._action_noise:
@@ -184,8 +184,6 @@ class DDPG(object):
                     self._train_net()
             self.save_session(episode_step)
 
-
-
     def load_session(self):
         if not self._check_point_dir:
             return
@@ -193,21 +191,25 @@ class DDPG(object):
         if not self._saver:
             self._saver = tf.train.Saver()
         try:
-            print("Trying to restore last checkpoint ...:",self._check_point_dir)
-            last_chk_path = tf.train.latest_checkpoint(checkpoint_dir=self._check_point_dir)
+            print("Trying to restore last checkpoint ...:",
+                  self._check_point_dir)
+            last_chk_path = tf.train.latest_checkpoint(
+                checkpoint_dir=self._check_point_dir)
             self._saver.restore(self._session, save_path=last_chk_path)
-            print("restore last checkpoint %s done"%self._check_point_dir)
+            print("restore last checkpoint %s done" % self._check_point_dir)
         except Exception as e:
             if not os.path.exists(self._check_point_dir):
-                 os.mkdir(self._check_point_dir)
-            assert( os.path.exists(self._check_point_dir) ) , "%s check point file create fail" % self._check_point_dir
-            print("Failed to restore checkpoint. Initializing variables instead."),e
+                os.mkdir(self._check_point_dir)
+            assert (os.path.exists(
+                self._check_point_dir
+            )), "%s check point file create fail" % self._check_point_dir
+            print(
+                "Failed to restore checkpoint. Initializing variables instead."
+            ), e
             self._session.run(tf.global_variables_initializer())
 
-
-    def save_session(self,step):
+    def save_session(self, step):
         if not self._saver:
             return
         save_path = self._check_point_dir + "/event"
-        self._saver.save(self._session, save_path=save_path, global_step=step) 
-
+        self._saver.save(self._session, save_path=save_path, global_step=step)
