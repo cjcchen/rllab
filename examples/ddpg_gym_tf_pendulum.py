@@ -8,9 +8,10 @@ RANDOM_SEED = 1234
 
 np.random.seed(RANDOM_SEED)
 tf.set_random_seed(RANDOM_SEED)
-env.seed(RANDOM_SEED)
 
 env = gym.make('Pendulum-v0')
+env.seed(RANDOM_SEED)
+
 ddpg = DDPG(env, plot=True, log_dir="cartpole")
 
 ddpg.train()

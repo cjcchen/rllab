@@ -20,20 +20,9 @@ class Model(object):
         self.name = name
 
     @property
-    def vars(self):
-        return tf.get_collection(
-            tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
-
-    @property
     def trainable_vars(self):
         return tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
-
-    @property
-    def perturbable_vars(self):
-        return [
-            var for var in self.trainable_vars if 'LayerNorm' not in var.name
-        ]
 
     def setup_target_net(self, target_net, tau):
         vars = self.trainable_vars
@@ -46,9 +35,6 @@ class Model(object):
                 tf.assign(target_var, (1. - tau) * target_var + tau * var))
         assert len(soft_updates) == len(vars)
         self._update_paras = tf.group(*soft_updates)
-
-
-_is_training = tf.placeholder(tf.bool, name="is_training")
 
 
 class ActorNet(Model):
@@ -96,7 +82,6 @@ class ActorNet(Model):
         return self._session.run(
             self.action, feed_dict={
                 self._state: state,
-                _is_training: False
             })
 
     def train(self, state):
@@ -104,7 +89,6 @@ class ActorNet(Model):
             [self._train_op],
             feed_dict={
                 self._state: state,
-                _is_training: True
             })
 
     def update_target_net(self):
@@ -208,7 +192,6 @@ class CriticNet(Model):
             feed_dict={
                 self._state: state,
                 self._action: action,
-                self._is_training: False
             })
 
     def predict_target_Q(self, state, action, reward, termial):
@@ -219,7 +202,6 @@ class CriticNet(Model):
                 self._action: action,
                 self._reward: reward,
                 self._terminal: termial,
-                _is_training: False
             })
 
     def train(self, state, action, target_q):
@@ -229,7 +211,6 @@ class CriticNet(Model):
                 self._state: state,
                 self._action: action,
                 self._target_q: target_q,
-                _is_training: True
             })
 
     def update_target_net(self):
