@@ -8,8 +8,8 @@ class ReplayBuffer:
 
     def add_data(self, state, action,reward,terminal, next_state):
         self._buffer.append( (state, action, reward, terminal, next_state ) )
-        #if(self.get_buffer_size()>self._buffer_size):
-        #    self._buffer = self._buffer[1:] 
+        if(self.get_buffer_size()>self._buffer_size):
+            self._buffer = self._buffer[1:] 
 
     def get_batch_data(self, batch_size):
         data=random.sample(self._buffer, batch_size)
