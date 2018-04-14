@@ -105,11 +105,9 @@ class ActorNet(Model):
         with tf.variable_scope(self.name) as scope:
             self._optimizer = tf.train.AdamOptimizer(self._lr,beta1=0.9, beta2=0.999, epsilon=1e-08)
 
-            #self.action_gradient = tf.placeholder(tf.float32, [None, self.action_dim])
-            #self.unnormalized_actor_gradients = tf.gradients(self.action, self.trainable_vars, -self.action_gradient)
-            #self.actor_gradients = list(map(lambda x: tf.div(x, 64), self.unnormalized_actor_gradients))
-
-            #self.optimize = tf.train.AdamOptimizer(1e-4).apply_gradients(zip(self.actor_gradients, self.trainable_vars))
+    def set_grad(self, grad):
+        grads = tf.gradients(ys=self._action, xs=self.trainable_vars, grad_ys=grad)
+        self._train_op = self._optimizer.apply_gradients(zip(grads, self.trainable_vars))
 
 
     def _build_net(self, state):
@@ -131,16 +129,14 @@ class ActorNet(Model):
         return x
     
     def predict(self, state):
-        #print ("predict:",self._state, state.shape)
         return self._session.run(self.action, feed_dict = {
             self._state:state, 
         })
 
 
-    def train(self, state, grads):
-        return self._session.run([self._optimize], feed_dict={
+    def train(self, state):
+        return self._session.run([self._train_op], feed_dict={
             self._state: state,
-            self._action_gradients: grads,
             })
 
     def update_target_net(self):
@@ -169,17 +165,19 @@ class CriticNet(Model):
         self._reward = reward
         self._target_q = target_q
         self._terminal = terminal
+        self._action_predict = action_predict
         
         self._q_value = self._build_net(state, action)
+
         #for calculating grade of actor, no meaning
         self._q_value_predict = self._build_net(state, action_predict, True)
+        self._action_loss = -tf.reduce_mean(self._q_value_predict)
         
         self._get_target_Q(reward, terminal)
         self._get_loss(self._target_q)
-        self._action_loss = -tf.reduce_mean(self._q_value_predict)
 
     def _get_target_Q(self, rewards, terminals):
-        self._target_Q = rewards + (1. - terminals) * self._gamma * self._q_value_predict
+        self._target_Q = rewards + (1. - terminals) * self._gamma * self._q_value
 
     def _get_loss(self, target_q):
         self._loss = tf.reduce_mean(tf.square(target_q - self._q_value))
@@ -191,7 +189,13 @@ class CriticNet(Model):
             self._loss += tc.layers.apply_regularization(tc.layers.l2_regularizer(self._weight_decay), weights_list=vars)
 
         self._optimizer = tf.train.AdamOptimizer(self._lr, beta1=0.9, beta2=0.999, epsilon=1e-08)
-        self._action_grads = tf.gradients(self._loss, self._action)
+
+        grads = tf.gradients(self._loss, self.trainable_vars)
+        grads_and_vars = list(zip(grads, self.trainable_vars))
+        self._train_op = self._optimizer.apply_gradients(grads_and_vars)
+
+
+        self._action_grads = tf.gradients(self._action_loss, self._action_predict)
 
 
     def _build_net(self, state, action, reuse=False):
@@ -219,25 +223,27 @@ class CriticNet(Model):
                     self._action:action, 
                     })
 
-    def predict_target_Q(self, state, reward, termial):
+    def predict_target_Q(self, state, action, reward, termial):
         return self._session.run(self.target_Q, feed_dict={
             self._state: state,
+            self._action: action,
             self._reward: reward,
             self._terminal: termial,
         })
 
 
-    def train(self, state, action, labels):
-        return self._session.run([self._loss, self._optimize, self.action_grads], feed_dict={
+    def train(self, state, action, target_q):
+        return self._session.run([self._train_op], feed_dict={
             self._state: state,
             self._action: action,
-            self._labels: labels,
+            self._target_q: target_q,
             })
 
-    def action_gradients(self, state, action):
+    def action_gradients(self, state, action, labels):
         return self._session.run(self._action_grads, feed_dict={
             self._state: state,
             self._action: action,
+            self._labels: labels,
         })
 
     def update_target_net(self):
