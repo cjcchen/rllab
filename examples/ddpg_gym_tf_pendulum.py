@@ -14,8 +14,14 @@ env = gym.make('Pendulum-v0')
 env.seed(RANDOM_SEED)
 
 action_dim = env.action_space.shape[-1]
-action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(action_dim), sigma=float(0.02) * np.ones(action_dim))
+action_noise = OrnsteinUhlenbeckActionNoise(
+    mu=np.zeros(action_dim), sigma=float(0.02) * np.ones(action_dim))
 
-ddpg = DDPG(env, plot=False, action_noise = action_noise, check_point_dir='pendulum', log_dir="pendulum_ou_noise")
+ddpg = DDPG(
+    env,
+    plot=False,
+    action_noise=action_noise,
+    check_point_dir='pendulum',
+    log_dir="pendulum_ou_noise")
 
 ddpg.train()
