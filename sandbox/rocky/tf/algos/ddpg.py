@@ -1,20 +1,17 @@
-from copy import copy
-
 from ddpg_base_net import ActorNet, CriticNet
 from replay_buffer import ReplayBuffer
 from noise import OrnsteinUhlenbeckActionNoise
-#from noise1 import OrnsteinUhlenbeckProcess
 
+from copy import copy
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib as tc
 
 
 
 class DDPG(object):
     def __init__(self,env, gamma = 0.99, tau = 0.01, observation_range= (-5,5), action_range= (-1,1), 
         actor_lr = 1e-4, critic_lr = 1e-3, reward_scale = 1, batch_size = 64, critic_l2_weight_decay = 0.01,
-        clip_norm = None, log_dir="test5"
+        clip_norm = None, log_dir="test_cm1"
         ):
 
         self._env = env
@@ -24,7 +21,6 @@ class DDPG(object):
         action_shape = env.action_space.shape
         actions_dim =  nb_actions = env.action_space.shape[-1]
         
-        print ("nb actions:",nb_actions)
         action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(0.02) * np.ones(nb_actions))
 
         # Inputs.

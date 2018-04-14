@@ -15,7 +15,7 @@ np.random.seed(RANDOM_SEED)
 tf.set_random_seed(RANDOM_SEED)
 env.seed(RANDOM_SEED)
 
-ddpg=DDPG(env)
+ddpg=DDPG(env, log_dir="test_done")
 
 ddpg.train()
 
