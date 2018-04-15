@@ -5,9 +5,6 @@ from rllab.envs.normalized_env import normalize
 
 from dm_control import suite
 
-model_list = suite.ALL_TASKS
-
-
 def run_task(domain_name, task_name):
     print("run: domain %s task %s" % (domain_name, task_name))
     dmcontrol_env = normalize(
@@ -32,7 +29,7 @@ def run_task(domain_name, task_name):
     dmcontrol_env.terminate()
 
 
-for domain, task in model_list:
+for domain, task in suite.ALL_TASKS:
     run_task(domain, task)
 
 print("Congratulation! All tasks are done!")
