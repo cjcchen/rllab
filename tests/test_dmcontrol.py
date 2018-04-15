@@ -5,6 +5,7 @@ from rllab.envs.normalized_env import normalize
 
 from dm_control import suite
 
+
 def run_task(domain_name, task_name):
     print("run: domain %s task %s" % (domain_name, task_name))
     dmcontrol_env = normalize(
