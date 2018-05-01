@@ -167,7 +167,8 @@ def record_tabular(key, val):
 def record_histogram(key, val):
     tensorboard.record_histogram(str(key), val)
 
-def record_histogram_by_type(histogram_type, key = None, shape=[1000], **kwargs):
+
+def record_histogram_by_type(histogram_type, key=None, shape=[1000], **kwargs):
     _tensorboard.record_histogram_by_type(histogram_type, key, shape, **kwargs)
 
 
