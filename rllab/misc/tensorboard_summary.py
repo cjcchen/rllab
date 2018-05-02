@@ -47,7 +47,7 @@ class Summary:
                             'builtin type', self._histogram_distribute_list)
 
         if str(key) not in self._histogram_ds:
-            self._histogram_ds[str(key)] = self.get_histogram_var_by_type(
+            self._histogram_ds[str(key)] = self._get_histogram_var_by_type(
                 histogram_type, shape, **kwargs)
             self._histogram_summary_op.append(
                 tf.summary.histogram(
@@ -56,7 +56,7 @@ class Summary:
                 self._histogram_summary_op)
 
         key_list = self._histogram_ds[str(key)][1]
-        val_list = self.get_histogram_val_by_type(histogram_type, **kwargs)
+        val_list = self._get_histogram_val_by_type(histogram_type, **kwargs)
 
         for key, val in zip(key_list, val_list):
             self._feed[key] = val
@@ -100,7 +100,7 @@ class Summary:
         self._writer.flush()
         del self._summary_scale.value[:]
 
-    def get_histogram_var_by_type(self, histogram_type, shape, **kwargs):
+    def _get_histogram_var_by_type(self, histogram_type, shape, **kwargs):
         if histogram_type == "normal":
             # Make a normal distribution, with a shifting mean
             mean = tf.Variable(kwargs['mean'])
@@ -122,7 +122,7 @@ class Summary:
         raise Exception('histogram type error %s' % histogram_type,
                         'builtin type', self._histogram_distribute_list)
 
-    def get_histogram_val_by_type(self, histogram_type, **kwargs):
+    def _get_histogram_val_by_type(self, histogram_type, **kwargs):
         if histogram_type == "normal":
             # Make a normal distribution, with a shifting mean
             return [kwargs['mean'], kwargs['stddev']]
