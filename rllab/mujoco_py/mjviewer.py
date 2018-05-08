@@ -19,8 +19,12 @@ def _glfw_error_callback(e, d):
 
 
 class MjViewer(object):
-
-    def __init__(self, visible=True, init_width=500, init_height=500, go_fast=False, title="Simulate"):
+    def __init__(self,
+                 visible=True,
+                 init_width=500,
+                 init_height=500,
+                 go_fast=False,
+                 title="Simulate"):
         """
         Set go_fast=True to run at full speed instead of waiting for the 60 Hz monitor refresh
         init_width and init_height set window size. On Mac Retina displays, they are in nominal
@@ -80,7 +84,7 @@ class MjViewer(object):
         self.cam.camid = -1
         self.cam.trackbodyid = 1
         width, height = self.get_dimensions()
-        mjlib.mjv_updateCameraPose(byref(self.cam), width*1.0/height)
+        mjlib.mjv_updateCameraPose(byref(self.cam), width * 1.0 / height)
 
     def get_rect(self):
         rect = mjcore.MJRRECT(0, 0, 0, 0)
@@ -93,19 +97,24 @@ class MjViewer(object):
 
         # Make the window's context current
         glfw.make_context_current(self.window)
-        
+
         self.gui_lock.acquire()
         rect = self.get_rect()
-        arr = (ctypes.c_double*3)(0, 0, 0)
+        arr = (ctypes.c_double * 3)(0, 0, 0)
 
-        mjlib.mjv_makeGeoms(self.model.ptr, self.data.ptr, byref(self.objects), byref(self.vopt), mjCAT_ALL, 0, None, None, ctypes.cast(arr, ctypes.POINTER(ctypes.c_double)))
-        mjlib.mjv_makeLights(self.model.ptr, self.data.ptr, byref(self.objects))
+        mjlib.mjv_makeGeoms(self.model.ptr, self.data.ptr, byref(self.objects),
+                            byref(self.vopt), mjCAT_ALL, 0, None, None,
+                            ctypes.cast(arr, ctypes.POINTER(ctypes.c_double)))
+        mjlib.mjv_makeLights(self.model.ptr, self.data.ptr, byref(
+            self.objects))
 
         mjlib.mjv_setCamera(self.model.ptr, self.data.ptr, byref(self.cam))
 
-        mjlib.mjv_updateCameraPose(byref(self.cam), rect.width*1.0/rect.height)
+        mjlib.mjv_updateCameraPose(
+            byref(self.cam), rect.width * 1.0 / rect.height)
 
-        mjlib.mjr_render(0, rect, byref(self.objects), byref(self.ropt), byref(self.cam.pose), byref(self.con))
+        mjlib.mjr_render(0, rect, byref(self.objects), byref(self.ropt),
+                         byref(self.cam.pose), byref(self.con))
 
         self.gui_lock.release()
 
@@ -127,7 +136,8 @@ class MjViewer(object):
         """
         width, height = self.get_dimensions()
         gl.glReadBuffer(gl.GL_BACK)
-        data = gl.glReadPixels(0, 0, width, height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
+        data = gl.glReadPixels(0, 0, width, height, gl.GL_RGB,
+                               gl.GL_UNSIGNED_BYTE)
         return (data, width, height)
 
     def _init_framebuffer_object(self):
@@ -140,14 +150,11 @@ class MjViewer(object):
 
         rbo = gl.glGenRenderbuffers(1)
         gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, rbo)
-        gl.glRenderbufferStorage(
-            gl.GL_RENDERBUFFER,
-            gl.GL_RGBA,
-            self.init_width,
-            self.init_height
-        )
-        gl.glFramebufferRenderbuffer(
-            gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_RENDERBUFFER, rbo)
+        gl.glRenderbufferStorage(gl.GL_RENDERBUFFER, gl.GL_RGBA,
+                                 self.init_width, self.init_height)
+        gl.glFramebufferRenderbuffer(gl.GL_FRAMEBUFFER,
+                                     gl.GL_COLOR_ATTACHMENT0,
+                                     gl.GL_RENDERBUFFER, rbo)
         gl.glBindRenderbuffer(gl.GL_RENDERBUFFER, 0)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
         fbo_status = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER)
@@ -172,7 +179,7 @@ class MjViewer(object):
         if self.visible:
             glfw.window_hint(glfw.SAMPLES, 4)
         else:
-            glfw.window_hint(glfw.VISIBLE, 0);
+            glfw.window_hint(glfw.VISIBLE, 0)
 
         # try stereo if refresh rate is at least 100Hz
         stereo_available = False
@@ -180,16 +187,16 @@ class MjViewer(object):
         _, _, refresh_rate = glfw.get_video_mode(glfw.get_primary_monitor())
         if refresh_rate >= 100:
             glfw.window_hint(glfw.STEREO, 1)
-            window = glfw.create_window(
-                self.init_width, self.init_height, self.title, None, None)
+            window = glfw.create_window(self.init_width, self.init_height,
+                                        self.title, None, None)
             if window:
                 stereo_available = True
 
         # no stereo: try mono
         if not window:
             glfw.window_hint(glfw.STEREO, 0)
-            window = glfw.create_window(
-                self.init_width, self.init_height, self.title, None, None)
+            window = glfw.create_window(self.init_width, self.init_height,
+                                        self.title, None, None)
 
         if not window:
             glfw.terminate()
@@ -270,7 +277,6 @@ class MjViewer(object):
 
         self.gui_lock.release()
 
-
     def handle_mouse_button(self, window, button, act, mods):
         # update button state
         self._button_left_pressed = \
@@ -307,7 +313,8 @@ class MjViewer(object):
 
         # scroll
         self.gui_lock.acquire()
-        mjlib.mjv_moveCamera(mjconstants.MOUSE_ZOOM, 0, (-20*y_offset), byref(self.cam), width, height)
+        mjlib.mjv_moveCamera(mjconstants.MOUSE_ZOOM, 0, (-20 * y_offset),
+                             byref(self.cam), width, height)
         self.gui_lock.release()
 
     def should_stop(self):
