@@ -15,7 +15,7 @@ def _norm(x):
     return tc.layers.layer_norm(x, center=True, scale=True)
 
 
-class Model(object):
+class ActorCriticBaseModel(object):
     def __init__(self, name):
         self.name = name
 
@@ -37,7 +37,7 @@ class Model(object):
         self._update_paras = tf.group(*soft_updates)
 
 
-class ActorNet(Model):
+class ActorNet(ActorCriticBaseModel):
     def __init__(self, sess, action_dim, lr=1e-4, bound=1):
         self.name = 'actor'
         self._action_dim = action_dim
@@ -98,7 +98,7 @@ class ActorNet(Model):
         return self._action
 
 
-class CriticNet(Model):
+class CriticNet(ActorCriticBaseModel):
     def __init__(self, sess, weight_decay=0.01, gamma=0.99, lr=1e-3):
         self.name = 'critic'
 

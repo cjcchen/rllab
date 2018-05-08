@@ -1,5 +1,6 @@
-from sandbox.rocky.tf.algos.ddpg.ddpg_base_net import ActorNet, CriticNet
+from sandbox.rocky.tf.algos.network.actor_critic_net import ActorNet, CriticNet
 from sandbox.rocky.tf.algos.ddpg.replay_buffer import ReplayBuffer
+from rllab.algos.base import RLAlgorithm
 
 import tensorflow as tf
 from copy import copy
@@ -7,11 +8,11 @@ import numpy as np
 import os
 
 
-class DDPG(object):
+class DDPG(RLAlgorithm):
     def __init__(self,
                  env,
                  gamma=0.99,
-                 tau=0.01,
+                 tau=0.001,
                  observation_range=(-5, 5),
                  action_range=(-1, 1),
                  actor_lr=1e-4,
@@ -19,11 +20,29 @@ class DDPG(object):
                  reward_scale=1,
                  batch_size=64,
                  critic_l2_weight_decay=0.01,
-                 clip_norm=None,
                  action_noise=None,
                  plot=False,
                  check_point_dir=None,
                  log_dir=None):
+        """
+        a DDPG model described in https://arxiv.org/pdf/1509.02971.pdf.
+        The hyperparameters used in the model:
+        :param env:
+        :param gamma: a discount factor 
+        :param tau: soft update 
+        :param observation_range: observation space range
+        :param action_range: action space range
+        :param actor_lr: learning rate for actor network
+        :param critic_lr: learning rate for critic network 
+        :param reward_scale: reward discount factor
+        :param batch_size: batch size
+        :param critic_l2_weight_decay: L2 weight decay for the weights in critic network 
+        :param action_noise: custom network for the output mean
+        :param plot: Is plot the train process?
+        :param checkpoint_dir: directory for saving model 
+        :param log_dir: directory for saving tensorboard logs
+        :return:
+        """
 
         self._env = env
         self._session = tf.Session()
@@ -41,7 +60,6 @@ class DDPG(object):
         self._tau = tau
         self._action_noise = action_noise
         self._action_range = action_range
-        self._clip_norm = clip_norm
         self._reward_scale = reward_scale
         self._batch_size = batch_size
         self._plot = plot
