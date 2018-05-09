@@ -40,8 +40,8 @@ _snapshot_gap = 1
 _log_tabular_only = False
 _header_printed = False
 
-_tensorboard_default_step = 0
 _tensorboard_step_key = None
+_tensorboard = Summary()
 
 _tensorboard = TensorBoardOutput()
 
@@ -149,13 +149,21 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    _tensorboard.record_scalar(str(key), val)
+    _tensorboard.record_scale(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
 
 def record_tensor(key, val):
     """Record tf.Tensor into tensorboard with Tensor.name and its value."""
     _tensorboard.record_tensor(key, val)
+
+
+def record_histogram(key, val):
+    _tensorboard.record_histogram(str(key), val)
+
+
+def record_histogram_by_type(histogram_type, key=None, shape=[1000], **kwargs):
+    _tensorboard.record_histogram_by_type(histogram_type, key, shape, **kwargs)
 
 
 def push_tabular_prefix(key):
@@ -230,10 +238,6 @@ def dump_tabular(*args, **kwargs):
                 log(line, *args, **kwargs)
         tabular_dict = dict(_tabular)
 
-        # write to the tensorboard folder
-        # This assumes that the keys in each iteration won't change!
-        dump_tensorboard(args, kwargs)
-
         # Also write to the csv files
         # This assumes that the keys in each iteration won't change!
         for tabular_fd in list(_tabular_fds.values()):
@@ -246,6 +250,10 @@ def dump_tabular(*args, **kwargs):
             writer.writerow(tabular_dict)
             tabular_fd.flush()
         del _tabular[:]
+
+    # write to the tensorboard folder
+    # This assumes that the keys in each iteration won't change!
+    dump_tensorboard(args, kwargs)
 
 
 def pop_prefix():
