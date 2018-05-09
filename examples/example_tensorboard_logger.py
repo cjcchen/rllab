@@ -2,7 +2,7 @@ from rllab.misc import logger
 
 import numpy as np
 
-logger.set_tensorboard_dir("./histogram_example2")
+logger.set_tensorboard_dir("./histogram_example")
 N = 400
 for i in range(N):
     k_val = i / float(N)
