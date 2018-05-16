@@ -46,8 +46,8 @@ dependencies:
         - Cython
         - redis
         - keras==1.2.1
-        - git+https://github.com/Lasagne/Lasagne.git@7992faa80fa5233a786e2582a605e854cea7d1cf#egg=Lasagne
         - git+https://github.com/Theano/Theano.git@2c19431b165aaf8289d1e6654988c64f4bb234e1#egg=Theano
+        - git+https://github.com/Lasagne/Lasagne.git@7992faa80fa5233a786e2582a605e854cea7d1cf#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
         - awscli
         - git+https://github.com/openai/gym.git@v0.7.4#egg=gym
