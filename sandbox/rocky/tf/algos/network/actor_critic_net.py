@@ -214,6 +214,13 @@ class CriticNet(ActorCriticBaseModel):
 
     def update_target_net(self):
         self._session.run(self._update_paras)
+    
+    def action_loss(self, state, action_predict):
+        return self._session.run(self._action_loss,
+            feed_dict={
+                self._state:state,
+                self._action_predict:action_predict,
+            })
 
     @property
     def action_grads(self):

@@ -1,6 +1,8 @@
 from sandbox.rocky.tf.algos.network.actor_critic_net import ActorNet, CriticNet
 from sandbox.rocky.tf.algos.ddpg.replay_buffer import ReplayBuffer
 from rllab.algos.base import RLAlgorithm
+from rllab.misc import logger
+
 
 import tensorflow as tf
 from copy import copy
@@ -139,18 +141,27 @@ class DDPG(RLAlgorithm):
         target_Q = self._target_critic.predict_target_Q(
             next_state, target_action, reward, terminal)
 
-        self._critic_net.train(state, action, target_Q)
+        critic_loss,_=self._critic_net.train(state, action, target_Q)
         self._actor_net.train(state)
+        action_loss = self._critic_net.action_loss(state, self._actor_net.predict(state))
+        Q_value = self._critic_net.predict_target_Q(
+            next_state, action, reward, terminal)
 
         self._actor_net.update_target_net()
         self._critic_net.update_target_net()
-        return
+        return action_loss, critic_loss,Q_value
 
     def _report_total_reward(self, reward, step):
         summary = tf.Summary()
         summary.value.add(tag='rollout/reward', simple_value=float(reward))
         summary.value.add(
             tag='train/episode_reward', simple_value=float(reward))
+        if self._summary_writer:
+            self._summary_writer.add_summary(summary, step)
+
+    def _report_value(self, key, value, step):
+        summary = tf.Summary()
+        summary.value.add(tag=key, simple_value=float(value))
         if self._summary_writer:
             self._summary_writer.add_summary(summary, step)
 
@@ -171,6 +182,9 @@ class DDPG(RLAlgorithm):
         if self._action_noise:
             self._action_noise.reset()
         total_reward = 0.0
+        action_loss_list=[]
+        critic_loss_list=[]
+        Q_value_list=[]
         episode_step = self._session.run(self._global_step)
 
         for epoch in range(epochs):
@@ -188,9 +202,34 @@ class DDPG(RLAlgorithm):
                     state = next_state
                     total_reward += reward
                     if terminal:
-                        self._report_total_reward(total_reward, episode_step)
-                        print("epoch %d, total reward %lf\n" % (episode_step,
-                                                                total_reward))
+                        average_action_loss = np.mean(action_loss_list)
+                        average_critic_loss = np.mean(critic_loss_list)
+                        average_Q_value = np.mean(Q_value_list)
+                        max_Q_value = np.max(Q_value_list)
+
+
+                        action_loss_list=[]
+                        critic_loss_list=[]
+                        Q_value_list=[]
+                     
+                        logger.push_prefix('epoch #%d | ' % episode_step)
+                        logger.record_tabular('epoch', episode_step)
+                        logger.record_tabular('total_reward', total_reward)
+                        logger.record_tabular('average action loss', average_action_loss)
+                        logger.record_tabular('average critic loss', average_critic_loss)
+                        logger.record_tabular('average Q value', average_Q_value)
+                        logger.record_tabular('max Q value', max_Q_value)
+
+                        logger.dump_tabular(with_prefix=False)
+                        logger.pop_prefix()
+
+                        #log to tensorboard
+                        self._report_value("rollout/episode_reward", total_reward, episode_step)
+                        self._report_value("rollout/average_action_loss", average_action_loss, episode_step)
+                        self._report_value("rollout/average_critic_loss", average_critic_loss, episode_step)
+                        self._report_value("rollout/average_Q_value", average_Q_value, episode_step)
+                        self._report_value("rollout/max_Q_value", max_Q_value, episode_step)
+
                         episode_step = self._session.run(
                             self._global_step.assign_add(1))
                         total_reward = 0
@@ -199,7 +238,10 @@ class DDPG(RLAlgorithm):
                             self._action_noise.reset()
 
                 for train in range(train_steps):
-                    self._train_net()
+                    action_loss, critic_loss, Q_value = self._train_net()
+                    action_loss_list.append(action_loss)
+                    critic_loss_list.append(critic_loss)
+                    Q_value_list.append(Q_value)
             self.save_session(episode_step)
 
     def load_session(self):
