@@ -34,16 +34,17 @@ class ActorCriticBaseModel(object):
             soft_updates.append(
                 tf.assign(target_var, (1. - tau) * target_var + tau * var))
         assert len(soft_updates) == len(vars)
-        self._update_paras = tf.group(*soft_updates)
+        self._update_parameters_op = tf.group(*soft_updates)
 
 
 class ActorNet(ActorCriticBaseModel):
-    def __init__(self, sess, action_dim, lr=1e-4, bound=1):
+    def __init__(self, sess, action_dim, lr=1e-4, bound=1, hidden_layers=[64,64]):
         self.name = 'actor'
         self._action_dim = action_dim
         self._lr = lr
         self._session = sess
         self._bound = bound
+        self._hidden_layers = hidden_layers
 
     def build_net(self, state):
         self._state = state
@@ -64,12 +65,12 @@ class ActorNet(ActorCriticBaseModel):
         with tf.variable_scope(self.name) as scope:
 
             with tf.variable_scope('fc1'):
-                fc1_out = _fc(state, 64)
+                fc1_out = _fc(state, self._hidden_layers[0])
                 fc1_out = _norm(fc1_out)
                 fc1_out = tf.nn.relu(fc1_out)
 
             with tf.variable_scope('fc2'):
-                fc2_out = _fc(fc1_out, 64)
+                fc2_out = _fc(fc1_out, self._hidden_layers[1])
                 fc2_out = _norm(fc2_out)
                 fc2_out = tf.nn.relu(fc2_out)
 
@@ -91,7 +92,7 @@ class ActorNet(ActorCriticBaseModel):
             })
 
     def update_target_net(self):
-        self._session.run(self._update_paras)
+        self._session.run(self._update_parameters_op)
 
     @property
     def action(self):
@@ -99,13 +100,14 @@ class ActorNet(ActorCriticBaseModel):
 
 
 class CriticNet(ActorCriticBaseModel):
-    def __init__(self, sess, weight_decay=0.01, gamma=0.99, lr=1e-3):
+    def __init__(self, sess, weight_decay=0.01, gamma=0.99, lr=1e-3, hidden_layers=[64,64]):
         self.name = 'critic'
 
         self._weight_decay = weight_decay
         self._gamma = gamma
         self._lr = lr
         self._session = sess
+        self._hidden_layers=hidden_layers
 
     def build_net(self, state, action, reward, terminal, target_q,
                   action_predict):
@@ -166,13 +168,13 @@ class CriticNet(ActorCriticBaseModel):
                 scope.reuse_variables()
 
             with tf.variable_scope('fc1'):
-                fc1_out = _fc(state, 64)
+                fc1_out = _fc(state, self._hidden_layers[0])
                 fc1_out = _norm(fc1_out)
                 fc1_out = tf.nn.relu(fc1_out)
 
             with tf.variable_scope('fc2'):
                 fc2_in = tf.concat([fc1_out, action], -1)
-                fc2_out = _fc(fc2_in, 64)
+                fc2_out = _fc(fc2_in, self._hidden_layers[1])
                 fc2_out = _norm(fc2_out)
                 fc2_out = tf.nn.relu(fc2_out)
 
@@ -213,7 +215,7 @@ class CriticNet(ActorCriticBaseModel):
             })
 
     def update_target_net(self):
-        self._session.run(self._update_paras)
+        self._session.run(self._update_parameters_op)
     
     def action_loss(self, state, action_predict):
         return self._session.run(self._action_loss,

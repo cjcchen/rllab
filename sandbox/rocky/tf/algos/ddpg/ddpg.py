@@ -15,13 +15,13 @@ class DDPG(RLAlgorithm):
                  env,
                  gamma=0.99,
                  tau=0.001,
-                 observation_range=(-5, 5),
                  action_range=(-1, 1),
                  actor_lr=1e-4,
                  critic_lr=1e-3,
                  reward_scale=1,
                  batch_size=64,
                  critic_l2_weight_decay=0.01,
+                 replay_buffer_size=1e6,
                  action_noise=None,
                  plot=False,
                  check_point_dir=None,
@@ -32,13 +32,13 @@ class DDPG(RLAlgorithm):
         :param env:
         :param gamma: a discount factor 
         :param tau: soft update 
-        :param observation_range: observation space range
         :param action_range: action space range
         :param actor_lr: learning rate for actor network
         :param critic_lr: learning rate for critic network 
         :param reward_scale: reward discount factor
         :param batch_size: batch size
         :param critic_l2_weight_decay: L2 weight decay for the weights in critic network 
+        :param replay_buffer_size: the size of replay buffer capacity
         :param action_noise: custom network for the output mean
         :param plot: Is plot the train process?
         :param checkpoint_dir: directory for saving model 
@@ -97,13 +97,8 @@ class DDPG(RLAlgorithm):
         self._target_critic.name = 'target_critic'
 
         #replay buffer
-        self._replay_buffer = ReplayBuffer(1e6)
+        self._replay_buffer = ReplayBuffer(replay_buffer_size)
 
-        if log_dir:
-            self._summary_writer = tf.summary.FileWriter(
-                log_dir, self._session.graph)
-        else:
-            self._summary_writer = None
         self._initialize()
 
     def _initialize(self):
@@ -150,20 +145,6 @@ class DDPG(RLAlgorithm):
         self._actor_net.update_target_net()
         self._critic_net.update_target_net()
         return action_loss, critic_loss,Q_value
-
-    def _report_total_reward(self, reward, step):
-        summary = tf.Summary()
-        summary.value.add(tag='rollout/reward', simple_value=float(reward))
-        summary.value.add(
-            tag='train/episode_reward', simple_value=float(reward))
-        if self._summary_writer:
-            self._summary_writer.add_summary(summary, step)
-
-    def _report_value(self, key, value, step):
-        summary = tf.Summary()
-        summary.value.add(tag=key, simple_value=float(value))
-        if self._summary_writer:
-            self._summary_writer.add_summary(summary, step)
 
     def predict(self, state):
         action = self._actor_net.predict(np.array(state).reshape(1, -1))[0]
@@ -222,13 +203,6 @@ class DDPG(RLAlgorithm):
 
                         logger.dump_tabular(with_prefix=False)
                         logger.pop_prefix()
-
-                        #log to tensorboard
-                        self._report_value("rollout/episode_reward", total_reward, episode_step)
-                        self._report_value("rollout/average_action_loss", average_action_loss, episode_step)
-                        self._report_value("rollout/average_critic_loss", average_critic_loss, episode_step)
-                        self._report_value("rollout/average_Q_value", average_Q_value, episode_step)
-                        self._report_value("rollout/max_Q_value", max_Q_value, episode_step)
 
                         episode_step = self._session.run(
                             self._global_step.assign_add(1))

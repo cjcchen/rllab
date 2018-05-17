@@ -1,5 +1,6 @@
 from sandbox.rocky.tf.algos.ddpg.ddpg import DDPG
 from sandbox.rocky.tf.algos.ddpg.noise import OrnsteinUhlenbeckActionNoise
+from rllab.misc import ext
 
 import gym
 import numpy as np
@@ -7,11 +8,11 @@ import tensorflow as tf
 
 RANDOM_SEED = 1234
 
-np.random.seed(RANDOM_SEED)
-tf.set_random_seed(RANDOM_SEED)
+ext.set_seed(RANDOM_SEED)
 
 env = gym.make('Pendulum-v0')
-env.seed(RANDOM_SEED)
+env.seed(ext.get_seed())
+
 
 action_dim = env.action_space.shape[-1]
 action_noise = OrnsteinUhlenbeckActionNoise(
