@@ -38,11 +38,16 @@ class ActorCriticBaseModel(object):
 
 
 class ActorNet(ActorCriticBaseModel):
-    def __init__(self, sess, action_dim, lr=1e-4, bound=1, hidden_layers=[64,64]):
+    def __init__(self, action_dim, lr=1e-4, bound=1, hidden_layers=[64, 64]):
+        '''
+        :param action_dim: the dimension of output action
+        :param lr: learning rate 
+        :param bound: the range of output action value
+        :param hidden units in each layers
+        '''
         self.name = 'actor'
         self._action_dim = action_dim
         self._lr = lr
-        self._session = sess
         self._bound = bound
         self._hidden_layers = hidden_layers
 
@@ -63,36 +68,32 @@ class ActorNet(ActorCriticBaseModel):
     def _build_net(self, state):
 
         with tf.variable_scope(self.name) as scope:
-
-            with tf.variable_scope('fc1'):
-                fc1_out = _fc(state, self._hidden_layers[0])
-                fc1_out = _norm(fc1_out)
-                fc1_out = tf.nn.relu(fc1_out)
-
-            with tf.variable_scope('fc2'):
-                fc2_out = _fc(fc1_out, self._hidden_layers[1])
-                fc2_out = _norm(fc2_out)
-                fc2_out = tf.nn.relu(fc2_out)
+            fc_out = state
+            for i, dim in enumerate(self._hidden_layers):
+                with tf.variable_scope('fc_%d' % i):
+                    fc_out = _fc(fc_out, dim)
+                    fc_out = _norm(fc_out)
+                    fc_out = tf.nn.relu(fc_out)
 
             with tf.variable_scope('output'):
-                output = _fc(fc2_out, self._action_dim)
+                output = _fc(fc_out, self._action_dim)
                 output = tf.tanh(output)
         return output
 
-    def predict(self, state):
-        return self._session.run(
+    def predict(self, session, state):
+        return session.run(
             self.action, feed_dict={
                 self._state: state,
             })
 
-    def train(self, state):
-        return self._session.run(
+    def train(self, session, state):
+        return session.run(
             [self._train_op], feed_dict={
                 self._state: state,
             })
 
-    def update_target_net(self):
-        self._session.run(self._update_parameters_op)
+    def update_target_net(self, session):
+        session.run(self._update_parameters_op)
 
     @property
     def action(self):
@@ -100,14 +101,24 @@ class ActorNet(ActorCriticBaseModel):
 
 
 class CriticNet(ActorCriticBaseModel):
-    def __init__(self, sess, weight_decay=0.01, gamma=0.99, lr=1e-3, hidden_layers=[64,64]):
+    def __init__(self,
+                 weight_decay=0.01,
+                 gamma=0.99,
+                 lr=1e-3,
+                 hidden_layers=[64, 64]):
+        '''
+        :param gamma: a discount factor 
+        :param lr: learning rate 
+        :param critic_l2_weight_decay: L2 weight decay 
+        :param hidden units in each layers
+        '''
+
         self.name = 'critic'
 
         self._weight_decay = weight_decay
         self._gamma = gamma
         self._lr = lr
-        self._session = sess
-        self._hidden_layers=hidden_layers
+        self._hidden_layers = hidden_layers
 
     def build_net(self, state, action, reward, terminal, target_q,
                   action_predict):
@@ -167,36 +178,34 @@ class CriticNet(ActorCriticBaseModel):
             if reuse:
                 scope.reuse_variables()
 
-            with tf.variable_scope('fc1'):
-                fc1_out = _fc(state, self._hidden_layers[0])
-                fc1_out = _norm(fc1_out)
-                fc1_out = tf.nn.relu(fc1_out)
-
-            with tf.variable_scope('fc2'):
-                fc2_in = tf.concat([fc1_out, action], -1)
-                fc2_out = _fc(fc2_in, self._hidden_layers[1])
-                fc2_out = _norm(fc2_out)
-                fc2_out = tf.nn.relu(fc2_out)
+            fc_out = state
+            for i, dim in enumerate(self._hidden_layers):
+                with tf.variable_scope('fc_%d' % i):
+                    if i == len(self._hidden_layers) - 1:
+                        fc_out = tf.concat([fc_out, action], -1)
+                    fc_out = _fc(fc_out, dim)
+                    fc_out = _norm(fc_out)
+                    fc_out = tf.nn.relu(fc_out)
 
             with tf.variable_scope('output'):
                 output = _fc(
-                    fc2_out,
+                    fc_out,
                     1,
                     weight_initializer=tf.random_uniform_initializer(
                         minval=-3e-3, maxval=3e-3))
 
         return output
 
-    def predict(self, state, action):
-        return self._session.run(
+    def predict(self, session, state, action):
+        return session.run(
             self._q_value,
             feed_dict={
                 self._state: state,
                 self._action: action,
             })
 
-    def predict_target_Q(self, state, action, reward, termial):
-        return self._session.run(
+    def predict_target_Q(self, session, state, action, reward, termial):
+        return session.run(
             self._target_Q,
             feed_dict={
                 self._state: state,
@@ -205,8 +214,8 @@ class CriticNet(ActorCriticBaseModel):
                 self._terminal: termial,
             })
 
-    def train(self, state, action, target_q):
-        return self._session.run(
+    def train(self, session, state, action, target_q):
+        return session.run(
             [self._loss, self._train_op],
             feed_dict={
                 self._state: state,
@@ -214,14 +223,15 @@ class CriticNet(ActorCriticBaseModel):
                 self._target_q: target_q,
             })
 
-    def update_target_net(self):
-        self._session.run(self._update_parameters_op)
-    
-    def action_loss(self, state, action_predict):
-        return self._session.run(self._action_loss,
+    def update_target_net(self, session):
+        session.run(self._update_parameters_op)
+
+    def action_loss(self, session, state, action_predict):
+        return session.run(
+            self._action_loss,
             feed_dict={
-                self._state:state,
-                self._action_predict:action_predict,
+                self._state: state,
+                self._action_predict: action_predict,
             })
 
     @property

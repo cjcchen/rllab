@@ -3,7 +3,6 @@ from sandbox.rocky.tf.algos.ddpg.replay_buffer import ReplayBuffer
 from rllab.algos.base import RLAlgorithm
 from rllab.misc import logger
 
-
 import tensorflow as tf
 from copy import copy
 import numpy as np
@@ -13,14 +12,12 @@ import os
 class DDPG(RLAlgorithm):
     def __init__(self,
                  env,
-                 gamma=0.99,
+                 actor_net,
+                 critic_net,
                  tau=0.001,
                  action_range=(-1, 1),
-                 actor_lr=1e-4,
-                 critic_lr=1e-3,
                  reward_scale=1,
                  batch_size=64,
-                 critic_l2_weight_decay=0.01,
                  replay_buffer_size=1e6,
                  action_noise=None,
                  plot=False,
@@ -83,16 +80,12 @@ class DDPG(RLAlgorithm):
             tf.float32, shape=(None, 1), name='critic_target')
 
         #actor
-        self._actor_net = ActorNet(self._session, actions_dim, lr=actor_lr)
+        self._actor_net = actor_net
         self._target_actor = copy(self._actor_net)
         self._target_actor.name = 'target_actor'
 
         #critic
-        self._critic_net = CriticNet(
-            self._session,
-            gamma=gamma,
-            lr=critic_lr,
-            weight_decay=critic_l2_weight_decay)
+        self._critic_net = critic_net
         self._target_critic = copy(self._critic_net)
         self._target_critic.name = 'target_critic'
 
@@ -132,22 +125,26 @@ class DDPG(RLAlgorithm):
         reward = reward.reshape(-1, 1)
         terminal = terminal.reshape(-1, 1)
 
-        target_action = self._target_actor.predict(next_state)
+        target_action = self._target_actor.predict(self._session, next_state)
         target_Q = self._target_critic.predict_target_Q(
-            next_state, target_action, reward, terminal)
+            self._session, next_state, target_action, reward, terminal)
 
-        critic_loss,_=self._critic_net.train(state, action, target_Q)
-        self._actor_net.train(state)
-        action_loss = self._critic_net.action_loss(state, self._actor_net.predict(state))
-        Q_value = self._critic_net.predict_target_Q(
-            next_state, action, reward, terminal)
+        critic_loss, _ = self._critic_net.train(self._session, state, action,
+                                                target_Q)
+        self._actor_net.train(self._session, state)
+        action_loss = self._critic_net.action_loss(self._session, state,
+                                                   self._actor_net.predict(
+                                                       self._session, state))
+        Q_value = self._critic_net.predict_target_Q(self._session, next_state,
+                                                    action, reward, terminal)
 
-        self._actor_net.update_target_net()
-        self._critic_net.update_target_net()
-        return action_loss, critic_loss,Q_value
+        self._actor_net.update_target_net(self._session)
+        self._critic_net.update_target_net(self._session)
+        return action_loss, critic_loss, Q_value
 
     def predict(self, state):
-        action = self._actor_net.predict(np.array(state).reshape(1, -1))[0]
+        action = self._actor_net.predict(self._session,
+                                         np.array(state).reshape(1, -1))[0]
         if self._action_noise:
             noise = self._action_noise.gen()
             action = action + noise
@@ -163,9 +160,9 @@ class DDPG(RLAlgorithm):
         if self._action_noise:
             self._action_noise.reset()
         total_reward = 0.0
-        action_loss_list=[]
-        critic_loss_list=[]
-        Q_value_list=[]
+        action_loss_list = []
+        critic_loss_list = []
+        Q_value_list = []
         episode_step = self._session.run(self._global_step)
 
         for epoch in range(epochs):
@@ -188,17 +185,19 @@ class DDPG(RLAlgorithm):
                         average_Q_value = np.mean(Q_value_list)
                         max_Q_value = np.max(Q_value_list)
 
+                        action_loss_list = []
+                        critic_loss_list = []
+                        Q_value_list = []
 
-                        action_loss_list=[]
-                        critic_loss_list=[]
-                        Q_value_list=[]
-                     
                         logger.push_prefix('epoch #%d | ' % episode_step)
                         logger.record_tabular('epoch', episode_step)
                         logger.record_tabular('total_reward', total_reward)
-                        logger.record_tabular('average action loss', average_action_loss)
-                        logger.record_tabular('average critic loss', average_critic_loss)
-                        logger.record_tabular('average Q value', average_Q_value)
+                        logger.record_tabular('average action loss',
+                                              average_action_loss)
+                        logger.record_tabular('average critic loss',
+                                              average_critic_loss)
+                        logger.record_tabular('average Q value',
+                                              average_Q_value)
                         logger.record_tabular('max Q value', max_Q_value)
 
                         logger.dump_tabular(with_prefix=False)
