@@ -201,7 +201,11 @@ class SawyerEnv(RosEnv, Serializable):
         """
         reset the simulation
         """
+<<<<<<< 6c989640b6d155ada49aaa924b3c5dd031d46071
         self._robot.reset()
+=======
+        self._robot.move_to_start_position()
+>>>>>>> add gazebo sawyer (#49)
 
         # Randomize start position of object
         if self.has_object:
@@ -244,7 +248,11 @@ class SawyerEnv(RosEnv, Serializable):
         if self.has_object:
             self.height_offset = initial_model_pos['object0'][2]
 
+<<<<<<< 6c989640b6d155ada49aaa924b3c5dd031d46071
         self._robot.reset()
+=======
+        self._robot.move_to_start_position()
+>>>>>>> add gazebo sawyer (#49)
 
         if self._simulated:
             # Generate the world
@@ -306,7 +314,11 @@ class SawyerEnv(RosEnv, Serializable):
 
     # -------------------------------------------------------------------------------------------
     def _get_obs(self):
+<<<<<<< 6c989640b6d155ada49aaa924b3c5dd031d46071
         robot_obs = self._robot.get_observation()
+=======
+        robot_obs = self._robot.get_obs()
+>>>>>>> add gazebo sawyer (#49)
 
         # gazebo data message
         if self.has_object:

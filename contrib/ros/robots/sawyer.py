@@ -7,24 +7,22 @@ import intera_interface
 import numpy as np
 import rospy
 
+from rllab.misc import logger
 from rllab.spaces import Box
 
-from contrib.ros.robots.robot import Robot
 
-
-class Sawyer(Robot):
+class Sawyer(object):
     def __init__(self, initial_joint_pos, control_mode):
         """
         :param initial_joint_pos: {str: float}
                             {'joint_name': position_value}
         """
-        Robot.__init__(self)
         self._limb = intera_interface.Limb('right')
         self._gripper = intera_interface.Gripper()
-        self._initial_joint_pos = initial_joint_pos
-        self._control_mode = control_mode
         self._joint_limits = rospy.wait_for_message('/robot/joint_limits',
                                                     JointLimits)
+        self._initial_joint_pos = initial_joint_pos
+        self._control_mode = control_mode
 
     @property
     def enabled(self):
@@ -51,11 +49,8 @@ class Sawyer(Robot):
         self._gripper.open()
         rospy.sleep(1.0)
 
-    def reset(self):
-        self._move_to_start_position()
-
-    def get_observation(self):
-        # cartesian space
+    def get_obs(self):
+        # gripper's information
         gripper_pos = np.array(self._limb.endpoint_pose()['position'])
         gripper_ori = np.array(self._limb.endpoint_pose()['orientation'])
         gripper_lvel = np.array(self._limb.endpoint_velocity()['linear'])
