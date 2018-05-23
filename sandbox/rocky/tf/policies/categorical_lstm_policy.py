@@ -11,7 +11,7 @@ from sandbox.rocky.tf.policies import StochasticPolicy
 
 from rllab.core import Serializable
 from rllab.misc import special
-from rllab.misc import overrides
+from rllab.misc.overrides import overrides
 
 
 class CategoricalLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
