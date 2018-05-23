@@ -2,7 +2,7 @@
 
 
 from rllab.misc import ext
-from rllab.misc.overrides import overrides
+from rllab.misc import overrides
 import rllab.misc.logger as logger
 from sandbox.rocky.tf.optimizers import PenaltyLbfgsOptimizer
 from sandbox.rocky.tf.algos import BatchPolopt

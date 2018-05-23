@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from rllab.core import Serializable
-from rllab.misc.ext import extract
+from rllab.misc import extract
 
 
 def center_advantages(advantages):

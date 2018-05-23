@@ -2,7 +2,7 @@ from rllab.core import Parameterized
 from rllab.core import Serializable
 from rllab.distributions import Delta
 from rllab.policies import Policy
-from rllab.misc.overrides import overrides
+from rllab.misc import overrides
 
 
 class UniformControlPolicy(Policy):
