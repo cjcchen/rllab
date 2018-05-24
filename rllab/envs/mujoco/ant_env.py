@@ -1,6 +1,6 @@
 from rllab.envs.mujoco.mujoco_env import MujocoEnv
-from rllab.core.serializable import Serializable
-from rllab.envs.base import Step
+from rllab.core import Serializable
+from rllab.envs import Step
 from rllab.misc.overrides import overrides
 from rllab.misc import logger
 

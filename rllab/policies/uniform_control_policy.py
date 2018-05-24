@@ -1,7 +1,7 @@
-from rllab.core.parameterized import Parameterized
-from rllab.core.serializable import Serializable
-from rllab.distributions.delta import Delta
-from rllab.policies.base import Policy
+from rllab.core import Parameterized
+from rllab.core import Serializable
+from rllab.distributions import Delta
+from rllab.policies import Policy
 from rllab.misc.overrides import overrides
 
 

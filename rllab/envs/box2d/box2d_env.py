@@ -5,7 +5,7 @@ import mako.template
 import numpy as np
 
 from rllab import spaces
-from rllab.envs.base import Env, Step
+from rllab.envs import Env, Step
 from rllab.envs.box2d.box2d_viewer import Box2DViewer
 
 from rllab.envs.box2d.parser.xml_box2d import world_from_xml, find_body, \

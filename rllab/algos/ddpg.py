@@ -1,4 +1,4 @@
-from rllab.algos.base import RLAlgorithm
+from rllab.algos import RLAlgorithm
 from rllab.misc.overrides import overrides
 from rllab.misc import special
 from rllab.misc import ext
