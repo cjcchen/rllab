@@ -4,8 +4,8 @@ import scipy.optimize
 from rllab.misc import logger
 from rllab.misc.overrides import overrides
 from rllab.misc import ext
-from rllab.algos.batch_polopt import BatchPolopt
-from rllab.core.serializable import Serializable
+from rllab.algos import BatchPolopt
+from rllab.core import Serializable
 import numpy as np
 from rllab.misc import tensor_utils
 

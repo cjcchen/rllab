@@ -1,4 +1,4 @@
-from rllab.algos.batch_polopt import BatchPolopt
+from rllab.algos import BatchPolopt
 from rllab.misc.overrides import overrides
 
 

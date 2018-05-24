@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from rllab.core.serializable import Serializable
+from rllab.core import Serializable
 from rllab.misc.ext import extract
 
 
