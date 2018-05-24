@@ -18,6 +18,17 @@ from rllab.misc.console import mkdir_p, colorize
 from rllab.misc.tabulate import tabulate
 from rllab.misc.tensorboard_output import TensorBoardOutput
 
+from contextlib import contextmanager
+from enum import Enum
+import numpy as np
+import tensorflow as tf
+
+from rllab.misc.tabulate import tabulate
+from rllab.misc.console import mkdir_p
+from rllab.misc.console import colorize
+from rllab.misc.autoargs import get_all_parameters
+from rllab.misc.tensorboard_summary import Summary
+
 _prefixes = []
 _prefix_str = ''
 
