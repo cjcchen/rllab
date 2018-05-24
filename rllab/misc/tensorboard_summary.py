@@ -2,7 +2,6 @@ import os
 import tensorflow as tf
 from rllab.misc.console import mkdir_p
 
-
 class Summary:
     def __init__(self):
         self._summary_scale = tf.Summary()
