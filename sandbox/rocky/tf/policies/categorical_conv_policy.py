@@ -7,12 +7,6 @@ from sandbox.rocky.tf.core import ConvNetwork
 from sandbox.rocky.tf.core import LayersPowered
 from sandbox.rocky.tf.distributions import Categorical
 from sandbox.rocky.tf.misc import tensor_utils
-<<<<<<< 7352279449b4b1de775f9a278862611edd7192d0
-from sandbox.rocky.tf.misc.tensor_utils import enclosing_scope
-from sandbox.rocky.tf.policies import StochasticPolicy
-=======
-from rllab.misc.overrides import overrides
->>>>>>> Remove convenience imports that generate circular dependencies (#87)
 from sandbox.rocky.tf.spaces import Discrete
 
 

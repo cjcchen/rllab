@@ -174,7 +174,6 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
     def vectorized(self):
         return True
 
-<<<<<<< b3749a44a112cbc69ea8d64d7c5f8e4f94e11625
     def dist_info_sym(self, obs_var, state_info_vars=None, name="dist_info_sym"):
         with enclosing_scope(self.name, name):
             mean_var, std_param_var = L.get_output([self._l_mean, self._l_std_param], obs_var)
@@ -187,20 +186,6 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             else:
                 raise NotImplementedError
             return dict(mean=mean_var, log_std=log_std_var)
-=======
-    def dist_info_sym(self, obs_var, state_info_vars=None):
-        mean_var, std_param_var = L.get_output(
-            [self._l_mean, self._l_std_param], obs_var)
-        if self.min_std_param is not None:
-            std_param_var = tf.maximum(std_param_var, self.min_std_param)
-        if self.std_parametrization == 'exp':
-            log_std_var = std_param_var
-        elif self.std_parametrization == 'softplus':
-            log_std_var = tf.log(tf.log(1. + tf.exp(std_param_var)))
-        else:
-            raise NotImplementedError
-        return dict(mean=mean_var, log_std=log_std_var)
->>>>>>> Support std_share_network in all GaussianMLP* classes (#69)
 
     @overrides
     def get_action(self, observation):
@@ -226,7 +211,6 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         :param old_dist_info_vars:
         :return:
         """
-<<<<<<< b3749a44a112cbc69ea8d64d7c5f8e4f94e11625
         with enclosing_scope(self.name, name):
             new_dist_info_vars = self.dist_info_sym(obs_var, action_var)
             new_mean_var, new_log_std_var = new_dist_info_vars["mean"], new_dist_info_vars["log_std"]
@@ -234,17 +218,6 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             epsilon_var = (action_var - old_mean_var) / (tf.exp(old_log_std_var) + 1e-8)
             new_action_var = new_mean_var + epsilon_var * tf.exp(new_log_std_var)
             return new_action_var
-=======
-        new_dist_info_vars = self.dist_info_sym(obs_var, action_var)
-        new_mean_var, new_log_std_var = new_dist_info_vars[
-            "mean"], new_dist_info_vars["log_std"]
-        old_mean_var, old_log_std_var = old_dist_info_vars[
-            "mean"], old_dist_info_vars["log_std"]
-        epsilon_var = (action_var - old_mean_var) / (
-            tf.exp(old_log_std_var) + 1e-8)
-        new_action_var = new_mean_var + epsilon_var * tf.exp(new_log_std_var)
-        return new_action_var
->>>>>>> Support std_share_network in all GaussianMLP* classes (#69)
 
     def log_diagnostics(self, paths):
         log_stds = np.vstack(
