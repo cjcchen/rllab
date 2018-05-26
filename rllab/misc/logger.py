@@ -1,9 +1,9 @@
 import os
 import os.path as osp
 import sys
+import csv
 import datetime
 import dateutil.tz
-import csv
 import joblib
 import json
 import pickle
@@ -12,27 +12,21 @@ import numpy as np
 from enum import Enum
 
 from contextlib import contextmanager
-import tensorflow as tf
-
-from rllab.misc.tabulate import tabulate
-from rllab.misc.console import mkdir_p
-from rllab.misc.console import colorize
-from rllab.misc.autoargs import get_all_parameters
-from rllab.misc.tensorboard_summary import Summary
-from rllab.misc import tabulate
-from rllab.misc import mkdir_p, colorize
-from rllab.misc import get_all_parameters
-
-
-from contextlib import contextmanager
 from enum import Enum
+import numpy as np
 import numpy as np
 import tensorflow as tf
 
+from rllab.misc import tabulate
+from rllab.misc.autoargs import get_all_parameters
+from rllab.misc.console import mkdir_p
+from rllab.misc.console import colorize
+from rllab.misc.tabulate import tabulate
 from rllab.misc.tabulate import tabulate
 from rllab.misc.console import mkdir_p
 from rllab.misc.console import colorize
 from rllab.misc.autoargs import get_all_parameters
+from rllab.misc.tensorboard_output import TensorBoardOutput
 from rllab.misc.tensorboard_summary import Summary
 
 _prefixes = []
@@ -50,7 +44,6 @@ _text_fds = {}
 _tabular_fds = {}
 _tabular_header_written = set()
 
-_tensorboard_writer = None
 _snapshot_dir = None
 _snapshot_mode = 'all'
 _snapshot_gap = 1
@@ -60,6 +53,8 @@ _header_printed = False
 
 _tensorboard_step_key = None
 _tensorboard = Summary()
+
+_tensorboard = TensorBoardOutput()
 
 
 def _add_output(file_name, arr, fds, mode='a'):
@@ -165,16 +160,13 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    _tensorboard.record_scale(str(key), val)
+    _tensorboard.record_scalar(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
 
-def record_histogram(key, val):
-    _tensorboard.record_histogram(str(key), val)
-
-
-def record_histogram_by_type(histogram_type, key=None, shape=[1000], **kwargs):
-    _tensorboard.record_histogram_by_type(histogram_type, key, shape, **kwargs)
+def record_tensor(key, val):
+    """Record tf.Tensor into tensorboard with Tensor.name and its value."""
+    _tensorboard.record_tensor(key, val)
 
 
 def push_tabular_prefix(key):
