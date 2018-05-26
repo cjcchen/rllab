@@ -21,7 +21,6 @@ class LbfgsOptimizer(Serializable):
         self._opt_fun = None
         self._target = None
         self._callback = callback
-        self._name = name
 
     def update_opt(self,
                    loss,
