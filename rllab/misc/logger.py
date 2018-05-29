@@ -1,9 +1,11 @@
 import os
 import os.path as osp
+import pickle
 import sys
-import datetime
+from contextlib import contextmanager
+from enum import Enum
+
 import dateutil.tz
-import csv
 import joblib
 import json
 import pickle
@@ -13,6 +15,7 @@ from contextlib import contextmanager
 from enum import Enum
 import numpy as np
 import tensorflow as tf
+
 
 from rllab.misc.tabulate import tabulate
 from rllab.misc.console import mkdir_p
@@ -35,7 +38,6 @@ _text_fds = {}
 _tabular_fds = {}
 _tabular_header_written = set()
 
-_tensorboard_writer = None
 _snapshot_dir = None
 _snapshot_mode = 'all'
 _snapshot_gap = 1
@@ -45,6 +47,8 @@ _header_printed = False
 
 _tensorboard_step_key = None
 _tensorboard = Summary()
+
+_tensorboard = TensorBoardOutput()
 
 
 def _add_output(file_name, arr, fds, mode='a'):
@@ -219,7 +223,6 @@ def dump_tensorboard(*args, **kwargs):
     step = None
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
-
     _tensorboard.dump_tensorboard(step)
 
 
