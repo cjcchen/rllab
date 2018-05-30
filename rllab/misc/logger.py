@@ -1,5 +1,6 @@
 import os
 import os.path as osp
+import pickle
 import sys
 import csv
 import datetime
@@ -8,12 +9,9 @@ import joblib
 import json
 import pickle
 import base64
-import numpy as np
-from enum import Enum
 
 from contextlib import contextmanager
 from enum import Enum
-import numpy as np
 import numpy as np
 import tensorflow as tf
 
@@ -156,13 +154,16 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    _tensorboard.record_scalar(str(key), val)
+    _tensorboard.record_scale(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
 
-def record_tensor(key, val):
-    """Record tf.Tensor into tensorboard with Tensor.name and its value."""
-    _tensorboard.record_tensor(key, val)
+def record_histogram(key, val):
+    _tensorboard.record_histogram(str(key), val)
+
+
+def record_histogram_by_type(histogram_type, key=None, shape=[1000], **kwargs):
+    _tensorboard.record_histogram_by_type(histogram_type, key, shape, **kwargs)
 
 
 def push_tabular_prefix(key):
@@ -222,7 +223,6 @@ def dump_tensorboard(*args, **kwargs):
     step = None
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
-
     _tensorboard.dump_tensorboard(step)
 
 
