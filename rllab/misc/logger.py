@@ -89,6 +89,7 @@ def remove_tabular_output(file_name):
 
 
 def set_tensorboard_dir(dir_name):
+    _tensorboard.set_dir(dir_name)
     _tensorboard_summary.set_dir(dir_name)
 
 
@@ -230,6 +231,7 @@ def dump_tensorboard(*args, **kwargs):
     step = None
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
+    _tensorboard.dump_tensorboard(step)
     _tensorboard_summary.dump_tensorboard(step)
 
 
