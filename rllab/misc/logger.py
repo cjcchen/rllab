@@ -153,8 +153,13 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    _tensorboard_summary.record_scale(str(key), val)
+    _tensorboard.record_scalar(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
+
+
+def record_tensor(key, val):
+    """Record tf.Tensor into tensorboard with Tensor.name and its value."""
+    _tensorboard.record_tensor(key, val)
 
 
 def record_histogram(key, val):
@@ -220,6 +225,8 @@ table_printer = TerminalTablePrinter()
 
 
 def dump_tensorboard(*args, **kwargs):
+    if len(_tabular) > 0:
+        tabular_dict = dict(_tabular)
     step = None
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
