@@ -15,7 +15,6 @@ from enum import Enum
 import numpy as np
 import tensorflow as tf
 
-from rllab.misc import tabulate
 from rllab.misc.tabulate import tabulate
 from rllab.misc.console import mkdir_p
 from rllab.misc.console import colorize
@@ -46,9 +45,9 @@ _log_tabular_only = False
 _header_printed = False
 
 _tensorboard_step_key = None
-_tensorboard = Summary()
 
 _tensorboard = TensorBoardOutput()
+_tensorboard_summary = Summary()
 
 
 def _add_output(file_name, arr, fds, mode='a'):
@@ -90,7 +89,7 @@ def remove_tabular_output(file_name):
 
 
 def set_tensorboard_dir(dir_name):
-    _tensorboard.set_dir(dir_name)
+    _tensorboard_summary.set_dir(dir_name)
 
 
 def set_snapshot_dir(dir_name):
@@ -154,16 +153,17 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
 
 
 def record_tabular(key, val):
-    _tensorboard.record_scale(str(key), val)
+    _tensorboard_summary.record_scale(str(key), val)
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
 
 def record_histogram(key, val):
-    _tensorboard.record_histogram(str(key), val)
+    _tensorboard_summary.record_histogram(str(key), val)
 
 
 def record_histogram_by_type(histogram_type, key=None, shape=[1000], **kwargs):
-    _tensorboard.record_histogram_by_type(histogram_type, key, shape, **kwargs)
+    _tensorboard_summary.record_histogram_by_type(histogram_type, key, shape,
+                                                  **kwargs)
 
 
 def push_tabular_prefix(key):
@@ -223,7 +223,7 @@ def dump_tensorboard(*args, **kwargs):
     step = None
     if _tensorboard_step_key and _tensorboard_step_key in tabular_dict:
         step = tabular_dict[_tensorboard_step_key]
-    _tensorboard.dump_tensorboard(step)
+    _tensorboard_summary.dump_tensorboard(step)
 
 
 def dump_tabular(*args, **kwargs):

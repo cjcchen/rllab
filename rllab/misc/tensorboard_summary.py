@@ -1,5 +1,7 @@
 import os
+
 import tensorflow as tf
+
 from rllab.misc.console import mkdir_p
 
 
